@@ -1,26 +1,68 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f3f4f6;
+  --foreground: #000000;
+  --link: #0f2744;
+  --card: #ffffff;
+  --card-elevated: #ffffff;
+  --border: rgba(0, 0, 0, 0.08);
+  --muted: #000000;
+  --accent: #0f2744;
+  --accent-soft: rgba(15, 39, 68, 0.08);
+  --positive: #15803d;
+  --negative: #dc2626;
+  --gradient-start: #1e3a5f;
+  --gradient-end: #0f2744;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-link: var(--link);
+  --color-card: var(--card);
+  --color-accent: var(--accent);
+  --color-muted: var(--muted);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--link);
+}
+
+.gradient-hero {
+  background: linear-gradient(
+    135deg,
+    var(--gradient-start) 0%,
+    var(--gradient-end) 100%
+  );
+}
+
+.utilization-track {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.utilization-fill {
+  background: var(--accent);
+  border-radius: 9999px;
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.utilization-fill-warning {
+  background: #d97706;
+}
+
+.utilization-fill-danger {
+  background: var(--negative);
 }

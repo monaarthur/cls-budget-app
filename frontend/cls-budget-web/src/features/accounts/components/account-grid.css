@@ -1,0 +1,19 @@
+.account-grid.ag-theme-quartz {
+  --ag-background-color: #ffffff;
+  --ag-header-background-color: #f3f4f6;
+  --ag-odd-row-background-color: #fafafa;
+  --ag-row-hover-color: rgba(15, 39, 68, 0.06);
+  --ag-selected-row-background-color: rgba(15, 39, 68, 0.1);
+  --ag-active-color: #0f2744;
+  --ag-checkbox-checked-color: #0f2744;
+  --ag-font-family: var(--font-geist-sans), system-ui, sans-serif;
+  --ag-font-size: 13px;
+}
+
+.account-grid .account-row-dirty {
+  background-color: #fffbeb !important;
+}
+
+.account-grid .account-row-dirty.ag-row-odd {
+  background-color: #fef3c7 !important;
+}

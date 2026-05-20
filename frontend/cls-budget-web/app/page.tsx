@@ -1,10 +1,5 @@
-import Image from "next/image";
+import { DashboardHome } from "@/features/dashboard";
 
-export default function Home() {
-  return (
-    <main className="p-6">
-      <h1 className="text-2xl font-semibold">CLS Budget App</h1>
-      <p className="mt-2 text-sm text-gray-600">Next.js + Tailwind is set up.</p>
-    </main>
-  );
+export default function HomePage() {
+  return <DashboardHome />;
 }
