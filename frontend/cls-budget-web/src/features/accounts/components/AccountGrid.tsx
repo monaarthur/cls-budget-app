@@ -14,6 +14,7 @@ import {
   type ValueParserParams,
   type ValueSetterParams,
 } from "ag-grid-community";
+import { RefreshCw, RotateCcw, Save, Search } from "lucide-react";
 import { accountsApi } from "@/features/accounts/api/accountsApi";
 import {
   ACCOUNT_CATEGORY_NAMES,
@@ -26,11 +27,10 @@ import {
   parseGridDate,
   toUpdateAccountRequest,
 } from "@/features/accounts/utils/accountMapper";
+import { accountGridTheme } from "@/features/accounts/components/accountGridTheme";
 import { ApiError } from "@/lib/api/client";
 import { formatCurrencyDetailed } from "@/lib/format";
 
-import "ag-grid-community/styles/ag-grid.css";
-import "ag-grid-community/styles/ag-theme-quartz.css";
 import "@/features/accounts/components/account-grid.css";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -52,6 +52,14 @@ const currencyFormatter = (params: ValueFormatterParams<AccountGridRow>) => {
   return formatCurrencyDetailed(Number(params.value));
 };
 
+const currencyCol = {
+  valueFormatter: currencyFormatter,
+  valueParser: (p: ValueParserParams) => parseNumber(p.newValue),
+  cellClass: "ag-cell-currency",
+  headerClass: "ag-cell-currency-header",
+  filter: "agNumberColumnFilter" as const,
+};
+
 export function AccountGrid() {
   const gridRef = useRef<AgGridReact<AccountGridRow>>(null);
   const dirtyIds = useRef(new Set<number>());
@@ -59,6 +67,7 @@ export function AccountGrid() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [quickFilter, setQuickFilter] = useState("");
   const [status, setStatus] = useState<{
     type: "success" | "error";
     message: string;
@@ -96,8 +105,9 @@ export function AccountGrid() {
         headerName: "Name",
         editable: true,
         filter: "agTextColumnFilter",
-        minWidth: 160,
+        minWidth: 180,
         pinned: "left",
+        cellClass: "ag-cell-name",
       },
       {
         field: "number",
@@ -110,36 +120,32 @@ export function AccountGrid() {
         field: "balance",
         headerName: "Balance",
         editable: true,
-        filter: "agNumberColumnFilter",
-        valueFormatter: currencyFormatter,
-        valueParser: (p: ValueParserParams) => parseNumber(p.newValue),
-        minWidth: 120,
+        minWidth: 130,
+        ...currencyCol,
       },
       {
         field: "limit",
         headerName: "Limit",
         editable: true,
-        filter: "agNumberColumnFilter",
-        valueFormatter: currencyFormatter,
-        valueParser: (p: ValueParserParams) => parseNumber(p.newValue),
-        minWidth: 110,
+        minWidth: 120,
+        ...currencyCol,
       },
       {
         field: "monthlyPayment",
         headerName: "Monthly",
         editable: true,
-        filter: "agNumberColumnFilter",
-        valueFormatter: currencyFormatter,
+        minWidth: 120,
+        ...currencyCol,
         valueParser: (p: ValueParserParams) =>
           parseOptionalNumber(p.newValue),
-        minWidth: 110,
       },
       {
         colId: "accountCategoryName",
         headerName: "Category",
         editable: true,
         filter: "agTextColumnFilter",
-        minWidth: 140,
+        minWidth: 150,
+        cellClass: "ag-cell-category",
         valueGetter: (params: ValueGetterParams<AccountGridRow>) =>
           params.data
             ? getAccountCategoryName(params.data.accountCategoryId)
@@ -167,6 +173,7 @@ export function AccountGrid() {
         cellEditor: "agCheckboxCellEditor",
         filter: true,
         width: 110,
+        cellClass: "ag-cell-center",
       },
       {
         field: "accountOpenDate",
@@ -184,10 +191,7 @@ export function AccountGrid() {
         editable: true,
         filter: "agDateColumnFilter",
         valueFormatter: (p) => formatDateForGrid(p.value ?? null),
-        valueParser: (p) => {
-          const parsed = parseGridDate(String(p.newValue ?? ""));
-          return parsed;
-        },
+        valueParser: (p) => parseGridDate(String(p.newValue ?? "")),
         minWidth: 130,
       },
       {
@@ -195,42 +199,42 @@ export function AccountGrid() {
         headerName: "Phone",
         editable: true,
         filter: "agTextColumnFilter",
-        minWidth: 120,
+        minWidth: 130,
       },
       {
         field: "email",
         headerName: "Email",
         editable: true,
         filter: "agTextColumnFilter",
-        minWidth: 180,
+        minWidth: 200,
       },
       {
         field: "url",
         headerName: "URL",
         editable: true,
         filter: "agTextColumnFilter",
-        minWidth: 200,
+        minWidth: 220,
       },
       {
         field: "username",
         headerName: "Username",
         editable: true,
         filter: "agTextColumnFilter",
-        minWidth: 120,
+        minWidth: 130,
       },
       {
         field: "description",
         headerName: "Description",
         editable: true,
         filter: "agTextColumnFilter",
-        minWidth: 180,
+        minWidth: 200,
       },
       {
         field: "notes",
         headerName: "Notes",
         editable: true,
         filter: "agTextColumnFilter",
-        minWidth: 220,
+        minWidth: 240,
         flex: 1,
       },
     ],
@@ -244,6 +248,7 @@ export function AccountGrid() {
       floatingFilter: true,
       resizable: true,
       minWidth: 100,
+      suppressHeaderMenuButton: false,
     }),
     [],
   );
@@ -307,44 +312,11 @@ export function AccountGrid() {
   };
 
   const onGridReady = (event: GridReadyEvent) => {
-    event.api.sizeColumnsToFit();
+    event.api.autoSizeColumns(["name", "number", "accountCategoryName"], false);
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={() => void handleSave()}
-          disabled={pendingCount === 0 || saving}
-          className="rounded-full bg-[var(--link)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {saving
-            ? "Saving…"
-            : `Save changes${pendingCount > 0 ? ` (${pendingCount})` : ""}`}
-        </button>
-        <button
-          type="button"
-          onClick={handleDiscard}
-          disabled={pendingCount === 0 || saving || loading}
-          className="rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Discard
-        </button>
-        <button
-          type="button"
-          onClick={() => void loadAccounts()}
-          disabled={loading || saving}
-          className="rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Refresh
-        </button>
-        <p className="text-sm text-[var(--muted)]">
-          Double-click a cell to edit. Edit multiple rows, then save all at
-          once.
-        </p>
-      </div>
-
       {status ? (
         <div
           className={`rounded-xl px-4 py-3 text-sm ${
@@ -357,31 +329,89 @@ export function AccountGrid() {
         </div>
       ) : null}
 
-      <div
-        className="ag-theme-quartz account-grid rounded-2xl border border-[var(--border)] overflow-hidden"
-        style={{ width: "100%", height: "calc(100vh - 280px)", minHeight: 480 }}
-      >
-        <AgGridReact<AccountGridRow>
-          ref={gridRef}
-          rowData={rowData}
-          columnDefs={columnDefs}
-          defaultColDef={defaultColDef}
-          getRowClass={getRowClass}
-          onCellValueChanged={onCellValueChanged}
-          onGridReady={onGridReady}
-          loading={loading}
-          singleClickEdit={false}
-          stopEditingWhenCellsLoseFocus={true}
-          undoRedoCellEditing={true}
-          undoRedoCellEditingLimit={20}
-          enableCellTextSelection={true}
-          ensureDomOrder={true}
-          animateRows={true}
-          pagination={true}
-          paginationPageSize={25}
-          paginationPageSizeSelector={[10, 25, 50, 100]}
-        />
+      <div className="account-grid-shell">
+        <div className="account-grid-toolbar">
+          <div className="account-grid-search">
+            <Search size={16} aria-hidden />
+            <input
+              type="search"
+              value={quickFilter}
+              onChange={(e) => setQuickFilter(e.target.value)}
+              placeholder="Search all columns…"
+              aria-label="Search accounts"
+            />
+          </div>
+
+          <div className="account-grid-toolbar-actions">
+            <button
+              type="button"
+              onClick={() => void handleSave()}
+              disabled={pendingCount === 0 || saving}
+              className="inline-flex items-center gap-2 rounded-full bg-[var(--link)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Save size={15} aria-hidden />
+              {saving
+                ? "Saving…"
+                : `Save${pendingCount > 0 ? ` (${pendingCount})` : ""}`}
+            </button>
+            <button
+              type="button"
+              onClick={handleDiscard}
+              disabled={pendingCount === 0 || saving || loading}
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <RotateCcw size={15} aria-hidden />
+              Discard
+            </button>
+            <button
+              type="button"
+              onClick={() => void loadAccounts()}
+              disabled={loading || saving}
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <RefreshCw size={15} aria-hidden />
+              Refresh
+            </button>
+          </div>
+
+          <p className="account-grid-meta">
+            {rowData.length} accounts
+            {pendingCount > 0 ? ` · ${pendingCount} unsaved` : ""}
+          </p>
+        </div>
+
+        <div className="account-grid-viewport">
+          <AgGridReact<AccountGridRow>
+            ref={gridRef}
+            theme={accountGridTheme}
+            rowData={rowData}
+            columnDefs={columnDefs}
+            defaultColDef={defaultColDef}
+            getRowClass={getRowClass}
+            onCellValueChanged={onCellValueChanged}
+            onGridReady={onGridReady}
+            loading={loading}
+            quickFilterText={quickFilter}
+            singleClickEdit={false}
+            stopEditingWhenCellsLoseFocus={true}
+            undoRedoCellEditing={true}
+            undoRedoCellEditingLimit={20}
+            enableCellTextSelection={true}
+            ensureDomOrder={true}
+            animateRows={true}
+            pagination={true}
+            paginationPageSize={25}
+            paginationPageSizeSelector={[10, 25, 50, 100]}
+            suppressDragLeaveHidesColumns={true}
+            tooltipShowDelay={400}
+          />
+        </div>
       </div>
+
+      <p className="text-center text-xs text-[var(--muted)] opacity-70">
+        Double-click a cell to edit · Use column filters or search · Save when
+        done
+      </p>
     </div>
   );
 }
