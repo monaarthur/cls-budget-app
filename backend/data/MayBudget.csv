@@ -1,0 +1,48 @@
+May Budget,,,,,,,,,,,,
+Rows pull from Master Budget when Active = Yes and Month = All or this month. Status can be filtered.,,,,,,,,,,,,
+,,,,,,,,,,,,
+Metric,Amount,,,,,,,,,,,
+Total Needed,"$9,111.77",Monies Available HVCU,4097,,,Items Not Paid,,,,,,
+Total Paid,"$8,047.79",HVCU Monies before 15,0,,,,,,,,,
+Remaining,"$1,063.98",HVCU Monies before 15,0,,,,,,,,,
+Monthly Income,,Monies Available HVCU,3600,,,,,,,,,
+Payment Need before 15,5220.14,HVCU Monies before 15,3262.14,,,,,,,,,
+,,HVCU Monies before 15,0,,,,,,,,,
+,,,,,,,,,,,,
+Active,Month,Account / Bill,Category,Due Day,Approx Amount,Monthly Due Override,Amount To Pay,Amount Left,Date Paid,Payment Account,Status,Notes
+No,All,Savings,Investment And Savings,,,,,,,,Planned,Imported from MonthlyPayments
+No,All,Invesments,Investment And Savings,,,,,,,,Planned,Imported from MonthlyPayments
+Yes,All,401k,Investment And Savings,1,,,,,,,Planned,Imported from MonthlyPayments
+Yes,All,Specialized Loan Services Mortgage 1,Mortgage,1,"$2,593.65",,"$2,593.65",,5/15/2026,HVCU,Paid,Imported from MonthlyPayments
+Yes,All,Specialized Loan Services Mortgage 2,Mortgage,1,$435.22,$435.22,$435.22,,5/1/2026,HVCU,Paid,Imported from MonthlyPayments
+Yes,All,Central Hudson Electric(Auto Pay),Utilities,,$200.00,,$50.00,,5/15/2026,HVCU CC,Paid,Imported from MonthlyPayments
+No,All,Nrg / Spruce Home Solar,Utilities,,$150.00,,$0.00,,,,Hold,Imported from MonthlyPayments
+Yes,All,Verizon Phone Internet (Auto Pay),Utilities,3,$150.00,,$150.00,$100.00,5/1/2026,HVCU CC,Paid,Imported from MonthlyPayments
+Yes,All,Att Cell (Auto Pay),Utilities,6,$424.96,,$375.00,$150.00,5/1/2026,HVCU CC,Paid,Imported from MonthlyPayments
+Yes,All,Royal Carting Garbage (Auto Pay),Utilities,,$75.00,,$361.00,,5/4/2026,HVCU CC,Paid,Imported from MonthlyPayments
+Yes,All,Water,Utilities,,$20.00,,$20.00,,,,Planned,Imported from MonthlyPayments
+Yes,All,Lawn Care,Home,,$300.00,,$0.00,,,,Planned,Imported from MonthlyPayments
+Yes,All,House Cleaning,Home,,$400.00,,$0.00,,,,Hold,Imported from MonthlyPayments
+Yes,All,Car Payment(Auto pay),Auto,5,$737.00,,$737.00,,5/1/2026,HVCU CC,Paid,Imported from MonthlyPayments
+Yes,All,GEICO Insurance (Paid Anually 2022),Auto,30,$251.00,,$600.00,,5/1/2026,HVCU,Paid,Imported from MonthlyPayments
+Yes,All,Maintenance,Auto,,$100.00,,$0.00,,,,Hold,Imported from MonthlyPayments
+Yes,All,Chase Hyatt,Credit Card,24,$400.00,,$400.00,,5/15/2026,HVCU,Planned,Imported from MonthlyPayments
+Yes,All,Discover,Credit Card,24,$200.00,$217.00,$90.00,,5/1/2026,HVCU,Paid,Imported from MonthlyPayments
+Yes,All,American Express,Credit Card,28,$400.00,,$549.00,,5/15/2026,HVCU,Paid,Imported from MonthlyPayments
+Yes,All,Citibank,Credit Card,10,$200.00,$200.00,$306.00,,5/1/2026,,Planned,Imported from MonthlyPayments
+Yes,All,Capital One,Credit Card,1,$53.00,$53.00,$53.00,$100.00,5/1/2026,HVCU,Paid,Imported from MonthlyPayments
+Yes,All,Macys,Credit Card,2,$75.00,$73.92,$73.92,$70.00,5/1/2026,HVCU,Paid,Imported from MonthlyPayments
+Yes,All,Credit One,Credit Card,16,$30.00,$30.00,$30.00,$30.00,5/12026,HVCU CC,Planned,Imported from MonthlyPayments
+,,HVCU,,21,,,1760,,5/1/2026,HVCU,Paid,
+,,Spririt,,19,,,96,,5/15/2026,,,
+,,Wayfair,,26,,,29,,5/1/2026,,,No payment due as of 5/15
+,,Amazon,,30,,,29,,,,,
+,,Life Insurance MONA,,70,,,30,,,,,
+,,Life Insurance SHAWN,,,,,70,,,,,
+,,Walmart,,0,,,,,,,,
+,,Doordash,,9,,,0,,,,,
+,,Netflix,,22,,,8.99,,,,Planned,
+,,Amazon,,28,,,14.99,,,,,
+,,Cash,,,,,70,,5/1/2026,HVCU,Paid,
+,,Food,,,,,30,,5/1/2026,HVCU,,
+,,Mr Haughton,,,,,150,,5/1/2026,HVCU,Paid,

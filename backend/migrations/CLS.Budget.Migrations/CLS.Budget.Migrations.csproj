@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\CLS.Budget.Infrastructure\CLS.Budget.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EditorConfigFiles Remove="C:\Repos\cls-budget-app\backend\migrations\CLS.Budget.Migrations\.editorconfig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="C:\Repos\cls-budget-app\backend\migrations\CLS.Budget.Migrations\.editorconfig" />
+  </ItemGroup>
+
+</Project>
