@@ -28,6 +28,47 @@ export function sortBudgetsByRecent(budgets: BudgetResponse[]): BudgetResponse[]
 
 export const RECENT_BUDGETS_LIMIT = 5;
 
+export function toDateInputValue(iso: string): string {
+  return iso.slice(0, 10);
+}
+
+export function dateInputToIso(date: string): string {
+  return `${date}T00:00:00.000Z`;
+}
+
+export function nameFromStartDate(startDate: string): string {
+  const date = new Date(dateInputToIso(startDate));
+  return date.toLocaleString("en-US", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+export function getDefaultBudgetPeriod(): {
+  name: string;
+  startPeriod: string;
+  endPeriod: string;
+} {
+  const now = new Date();
+  const monthStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+  );
+  const monthEnd = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0),
+  );
+
+  return {
+    name: monthStart.toLocaleString("en-US", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    }),
+    startPeriod: monthStart.toISOString(),
+    endPeriod: monthEnd.toISOString(),
+  };
+}
+
 export function formatBudgetPeriod(startPeriod: string, endPeriod: string): string {
   const start = new Date(startPeriod).toLocaleDateString("en-US", {
     month: "short",

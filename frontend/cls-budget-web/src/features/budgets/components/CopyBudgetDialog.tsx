@@ -3,18 +3,10 @@
 import { useEffect, useState } from "react";
 import { Copy, X } from "lucide-react";
 import { budgetsApi } from "@/features/budgets/api/budgetsApi";
-import { getNextBudgetPeriod } from "@/features/budgets/utils/budgetFormat";
+import { getNextBudgetPeriod, toDateInputValue, dateInputToIso } from "@/features/budgets/utils/budgetFormat";
 import type { BudgetResponse } from "@/features/budgets/types/budget";
 import { Card } from "@/components/ui/Card";
 import { ApiError } from "@/lib/api/client";
-
-function toDateInputValue(iso: string): string {
-  return iso.slice(0, 10);
-}
-
-function dateInputToIso(date: string): string {
-  return `${date}T00:00:00.000Z`;
-}
 
 export function CopyBudgetDialog({
   budget,
