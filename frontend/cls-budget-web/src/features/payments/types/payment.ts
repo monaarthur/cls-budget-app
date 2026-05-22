@@ -3,6 +3,7 @@ export interface PaymentResponse {
   budgetId: number;
   accountId: number;
   paymentMade: number;
+  amount: number;
   budgetPaymentStatusId: number;
   budgetPaymentStatusName: string;
   isCleared: boolean;
@@ -21,6 +22,7 @@ export interface CreatePaymentRequest {
   budgetId: number;
   accountId: number;
   paymentMade: number;
+  amount: number;
   budgetPaymentStatusId: number;
   isCleared: boolean;
   paymentDate: string;

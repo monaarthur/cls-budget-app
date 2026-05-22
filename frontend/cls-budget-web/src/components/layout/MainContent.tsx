@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 
-const wideRoutes = ["/accounts/grid"];
+const wideRoutes = ["/accounts/grid", "/budgets/"];
 
 export function MainContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
