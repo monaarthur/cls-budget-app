@@ -39,3 +39,15 @@ export function toUpdatePaymentRequest(row: BudgetGridRow): UpdatePaymentRequest
     paymentSourceId: row.paymentSourceId,
   };
 }
+
+export function getBudgetStatusRowClass(statusName: string): string {
+  switch (statusName.trim().toLowerCase()) {
+    case "pending":
+    case "scheduled":
+      return "budget-row-scheduled";
+    case "paid":
+      return "budget-row-paid";
+    default:
+      return "budget-row-alert";
+  }
+}

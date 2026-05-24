@@ -19,8 +19,10 @@ import { RefreshCw, RotateCcw, Save, Search } from "lucide-react";
 import { accountsApi } from "@/features/accounts/api/accountsApi";
 import {
   ACCOUNT_CATEGORY_NAMES,
+  compareAccountCategoryIds,
   getAccountCategoryId,
   getAccountCategoryName,
+  sortRowsByCategory,
 } from "@/features/accounts/data/accountCategories";
 import type { AccountGridRow } from "@/features/accounts/utils/accountMapper";
 import {
@@ -89,7 +91,7 @@ export function AccountGrid() {
     setStatus(null);
     try {
       const result = await accountsApi.getAll();
-      setRowData(result.data ?? []);
+      setRowData(sortRowsByCategory(result.data ?? [], (row) => row.name));
       dirtyIds.current.clear();
       setPendingCount(0);
     } catch (err) {
@@ -183,6 +185,17 @@ export function AccountGrid() {
           params.data
             ? getAccountCategoryName(params.data.accountCategoryId)
             : "",
+        comparator: (_valueA, _valueB, nodeA, nodeB) => {
+          const a = nodeA.data;
+          const b = nodeB.data;
+          if (!a || !b) return 0;
+          return compareAccountCategoryIds(
+            a.accountCategoryId,
+            b.accountCategoryId,
+            a.name,
+            b.name,
+          );
+        },
       },
       {
         field: "isPaidOff",

@@ -19,6 +19,8 @@ import { RefreshCw, RotateCcw, Save, Search } from "lucide-react";
 import { accountsApi } from "@/features/accounts/api/accountsApi";
 import {
   getAccountCategoryName,
+  compareAccountCategoryIds,
+  sortRowsByCategory,
 } from "@/features/accounts/data/accountCategories";
 import {
   formatDateForGrid,
@@ -34,7 +36,12 @@ import {
 import { budgetsApi } from "@/features/budgets/api/budgetsApi";
 import { formatBudgetPeriod } from "@/features/budgets/utils/budgetFormat";
 import {
+  summarizePaymentsByHalfMonth,
+  type PaymentHalfSummary,
+} from "@/features/budgets/utils/budgetPaymentSummary";
+import {
   buildBudgetGridRows,
+  getBudgetStatusRowClass,
   toUpdatePaymentRequest,
   type BudgetGridRow,
 } from "@/features/budgets/utils/budgetGridMapper";
@@ -71,6 +78,40 @@ const currencyCol = {
   filter: "agNumberColumnFilter" as const,
 };
 
+function PaymentHalfPanel({
+  title,
+  summary,
+}: {
+  title: string;
+  summary: PaymentHalfSummary;
+}) {
+  return (
+    <div className="rounded-xl bg-white/10 p-4 backdrop-blur-sm">
+      <p className="text-sm font-semibold text-white">{title}</p>
+      <dl className="mt-3 space-y-2 text-sm">
+        <div className="flex items-center justify-between gap-4">
+          <dt className="text-white/75">Scheduled</dt>
+          <dd className="font-semibold tabular-nums text-white">
+            {formatCurrency(summary.scheduled)}
+          </dd>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <dt className="text-white/75">Paid</dt>
+          <dd className="font-semibold tabular-nums text-white">
+            {formatCurrency(summary.paid)}
+          </dd>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <dt className="text-white/75">Planned</dt>
+          <dd className="font-semibold tabular-nums text-white">
+            {formatCurrency(summary.planned)}
+          </dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
 export function BudgetGrid({ budgetId }: { budgetId: number }) {
   const gridRef = useRef<AgGridReact<BudgetGridRow>>(null);
   const dirtyIds = useRef(new Set<number>());
@@ -79,6 +120,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   const [rowData, setRowData] = useState<BudgetGridRow[]>([]);
   const [budgetName, setBudgetName] = useState("");
   const [budgetPeriod, setBudgetPeriod] = useState("");
+  const [budgetStartPeriod, setBudgetStartPeriod] = useState("");
   const [statusNames, setStatusNames] = useState<string[]>([]);
   const [statusByName, setStatusByName] = useState<Map<string, number>>(
     new Map(),
@@ -128,10 +170,16 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       );
 
       setBudgetName(budget.name);
+      setBudgetStartPeriod(budget.startPeriod);
       setBudgetPeriod(
         formatBudgetPeriod(budget.startPeriod, budget.endPeriod),
       );
-      setRowData(buildBudgetGridRows(payments, accountsById));
+      setRowData(
+        sortRowsByCategory(
+          buildBudgetGridRows(payments, accountsById),
+          (row) => row.accountName,
+        ),
+      );
       dirtyIds.current.clear();
       setPendingCount(0);
     } catch (err) {
@@ -151,13 +199,18 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
     void loadData();
   }, [loadData]);
 
-  const { totalBudgeted, totalPaid, clearedCount } = useMemo(() => {
+  const { totalBudgeted, totalPaid, clearedCount, paymentHalves } = useMemo(() => {
+    const halves = budgetStartPeriod
+      ? summarizePaymentsByHalfMonth(rowData, budgetStartPeriod)
+      : null;
+
     return {
       totalBudgeted: rowData.reduce((sum, row) => sum + row.amount, 0),
       totalPaid: rowData.reduce((sum, row) => sum + row.paymentMade, 0),
       clearedCount: rowData.filter((row) => row.isCleared).length,
+      paymentHalves: halves,
     };
-  }, [rowData, summaryTick]);
+  }, [rowData, summaryTick, budgetStartPeriod]);
 
   const columnDefs = useMemo<ColDef<BudgetGridRow>[]>(
     () => [
@@ -186,6 +239,17 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
           params.data
             ? getAccountCategoryName(params.data.accountCategoryId)
             : "",
+        comparator: (_valueA, _valueB, nodeA, nodeB) => {
+          const a = nodeA.data;
+          const b = nodeB.data;
+          if (!a || !b) return 0;
+          return compareAccountCategoryIds(
+            a.accountCategoryId,
+            b.accountCategoryId,
+            a.accountName,
+            b.accountName,
+          );
+        },
       },
       {
         colId: "amount",
@@ -316,13 +380,13 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
 
   const getRowClass = useCallback(
     (params: RowClassParams<BudgetGridRow>) => {
-      if (
-        params.data &&
-        dirtyIds.current.has(params.data.budgetPaymentId)
-      ) {
+      if (!params.data) return "";
+
+      if (dirtyIds.current.has(params.data.budgetPaymentId)) {
         return "account-row-dirty";
       }
-      return "";
+
+      return getBudgetStatusRowClass(params.data.budgetPaymentStatusName);
     },
     [pendingCount],
   );
@@ -411,22 +475,44 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   return (
     <div className="space-y-4">
       <div className="gradient-hero rounded-2xl p-5 shadow-lg shadow-[var(--accent)]/20">
-        <p className="text-sm font-medium text-white/80">
-          {budgetName || "Budget"}
-        </p>
-        {loading ? (
-          <div className="mt-2 h-9 w-36 animate-pulse rounded-lg bg-white/20" />
-        ) : (
-          <p className="mt-1 text-3xl font-bold tracking-tight text-white">
-            {formatCurrency(totalBudgeted)}
-          </p>
-        )}
-        {!loading ? (
-          <p className="mt-2 text-xs text-white/70">
-            {formatCurrency(totalPaid)} paid · {clearedCount} of{" "}
-            {rowData.length} cleared
-            {budgetPeriod ? ` · ${budgetPeriod}` : ""}
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-white/80">
+              {budgetName || "Budget"}
+            </p>
+            {loading ? (
+              <div className="mt-2 h-9 w-36 animate-pulse rounded-lg bg-white/20" />
+            ) : (
+              <p className="mt-1 text-3xl font-bold tracking-tight text-white">
+                {formatCurrency(totalBudgeted)}
+              </p>
+            )}
+            {!loading ? (
+              <p className="mt-2 text-xs text-white/70">
+                {formatCurrency(totalPaid)} paid · {clearedCount} of{" "}
+                {rowData.length} cleared
+                {budgetPeriod ? ` · ${budgetPeriod}` : ""}
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        {!loading && paymentHalves ? (
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <PaymentHalfPanel
+              title={`Before ${paymentHalves.cutoffLabel}`}
+              summary={paymentHalves.before}
+            />
+            <PaymentHalfPanel
+              title={`After ${paymentHalves.cutoffLabel}`}
+              summary={paymentHalves.after}
+            />
+          </div>
+        ) : loading ? (
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <div className="h-28 animate-pulse rounded-xl bg-white/10" />
+            <div className="h-28 animate-pulse rounded-xl bg-white/10" />
+          </div>
         ) : null}
       </div>
 

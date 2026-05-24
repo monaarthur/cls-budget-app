@@ -157,6 +157,39 @@
   text-transform: uppercase;
 }
 
+/* Header column dividers — makes width boundaries visible when resizing */
+.account-grid-viewport .ag-header-cell,
+.account-grid-viewport .ag-header-group-cell {
+  border-right: 1px solid rgba(248, 250, 252, 0.35);
+}
+
+.account-grid-viewport .ag-header-row-column-filter .ag-header-cell {
+  border-right: 1px solid rgba(15, 39, 68, 0.14);
+}
+
+.account-grid-viewport .ag-header-cell-resize {
+  width: 8px;
+  right: -4px;
+  opacity: 0.85;
+}
+
+.account-grid-viewport .ag-header-cell-resize::after {
+  content: "";
+  position: absolute;
+  top: 18%;
+  bottom: 18%;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: rgba(248, 250, 252, 0.55);
+  border-radius: 1px;
+}
+
+.account-grid-viewport .ag-header-cell-resize:hover::after {
+  background: #f8fafc;
+  width: 2px;
+}
+
 .account-grid-viewport .ag-floating-filter {
   background: #f1f5f9;
 }
@@ -220,6 +253,55 @@
 
 .account-grid-viewport .account-row-dirty.ag-row-hover {
   background-color: #fef08a !important;
+}
+
+/* Budget grid — payment status row colors */
+.account-grid-viewport .budget-row-pending {
+  background-color: #fef2f2 !important;
+}
+
+.account-grid-viewport .budget-row-pending.ag-row-odd {
+  background-color: #fee2e2 !important;
+}
+
+.account-grid-viewport .budget-row-pending.ag-row-hover {
+  background-color: #fecaca !important;
+}
+
+.account-grid-viewport .budget-row-scheduled {
+  background-color: #fefce8 !important;
+}
+
+.account-grid-viewport .budget-row-scheduled.ag-row-odd {
+  background-color: #fef9c3 !important;
+}
+
+.account-grid-viewport .budget-row-scheduled.ag-row-hover {
+  background-color: #fef08a !important;
+}
+
+.account-grid-viewport .budget-row-paid {
+  background-color: #f0fdf4 !important;
+}
+
+.account-grid-viewport .budget-row-paid.ag-row-odd {
+  background-color: #dcfce7 !important;
+}
+
+.account-grid-viewport .budget-row-paid.ag-row-hover {
+  background-color: #bbf7d0 !important;
+}
+
+.account-grid-viewport .budget-row-alert {
+  background-color: #fef2f2 !important;
+}
+
+.account-grid-viewport .budget-row-alert.ag-row-odd {
+  background-color: #fee2e2 !important;
+}
+
+.account-grid-viewport .budget-row-alert.ag-row-hover {
+  background-color: #fecaca !important;
 }
 
 /* Pagination panel */

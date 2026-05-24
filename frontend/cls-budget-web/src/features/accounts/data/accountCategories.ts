@@ -26,3 +26,47 @@ export function getAccountCategoryName(categoryId: number): string {
 export function getAccountCategoryId(name: string): number | undefined {
   return nameToId.get(name);
 }
+
+/** Default grid row order: Mortgage → Loan → Utility → Credit Card → others */
+const CATEGORY_SORT_ORDER: Record<string, number> = {
+  Mortgage: 0,
+  Loan: 1,
+  Utility: 2,
+  "Credit Card": 3,
+};
+
+export function getAccountCategorySortIndex(categoryId: number): number {
+  return CATEGORY_SORT_ORDER[getAccountCategoryName(categoryId)] ?? 100;
+}
+
+export function compareAccountCategoryIds(
+  categoryIdA: number,
+  categoryIdB: number,
+  labelA = "",
+  labelB = "",
+): number {
+  const orderDiff =
+    getAccountCategorySortIndex(categoryIdA) -
+    getAccountCategorySortIndex(categoryIdB);
+  if (orderDiff !== 0) return orderDiff;
+
+  if (labelA && labelB) {
+    return labelA.localeCompare(labelB, undefined, { sensitivity: "base" });
+  }
+
+  return categoryIdA - categoryIdB;
+}
+
+export function sortRowsByCategory<T extends { accountCategoryId: number }>(
+  rows: T[],
+  getLabel: (row: T) => string,
+): T[] {
+  return [...rows].sort((a, b) =>
+    compareAccountCategoryIds(
+      a.accountCategoryId,
+      b.accountCategoryId,
+      getLabel(a),
+      getLabel(b),
+    ),
+  );
+}

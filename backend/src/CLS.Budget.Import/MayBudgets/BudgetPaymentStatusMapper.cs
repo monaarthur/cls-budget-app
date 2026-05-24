@@ -11,8 +11,8 @@ internal static class BudgetPaymentStatusMapper
             "scheduled" => BudgetPaymentStatusIds.Scheduled,
             "failed" => BudgetPaymentStatusIds.Failed,
             "overdue" => BudgetPaymentStatusIds.Overdue,
-            "planned" or "hold" or "" or null => BudgetPaymentStatusIds.Pending,
-            _ => BudgetPaymentStatusIds.Pending
+            "planned" or "hold" or "" or null => BudgetPaymentStatusIds.Scheduled,
+            _ => BudgetPaymentStatusIds.Scheduled
         };
 
     public static bool IsCleared(string? status, DateTime? datePaid) =>

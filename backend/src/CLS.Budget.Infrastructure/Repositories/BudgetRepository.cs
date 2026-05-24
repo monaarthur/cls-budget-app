@@ -68,7 +68,7 @@ public sealed class BudgetRepository(BudgetDbContext dbContext) : IBudgetReposit
                 PaymentMade = account.MonthlyPayment ?? 0m,
                 Amount = account.MonthlyPayment ?? 0m,
                 PaymentDate = budget.StartPeriod,
-                BudgetPaymentStatusId = BudgetPaymentStatusIds.Pending,
+                BudgetPaymentStatusId = BudgetPaymentStatusIds.Scheduled,
                 IsCleared = false
             });
         }
@@ -97,7 +97,7 @@ public sealed class BudgetRepository(BudgetDbContext dbContext) : IBudgetReposit
                 AccountId = payment.AccountId,
                 PaymentMade = payment.PaymentMade,
                 Amount = payment.Amount,
-                BudgetPaymentStatusId = BudgetPaymentStatusIds.Pending,
+                BudgetPaymentStatusId = BudgetPaymentStatusIds.Scheduled,
                 IsCleared = false,
                 PaymentDate = newBudget.StartPeriod,
                 ClearedDate = null,
