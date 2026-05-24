@@ -10,6 +10,7 @@ public class Account
     public decimal Limit { get; set; }
     public DateTime AccountOpenDate { get; set; }
     public decimal? MonthlyPayment { get; set; }
+    public int? PaymentDay { get; set; }
     public string Phone { get; set; } = null!;
     public string Email { get; set; } = null!;
     public string Url { get; set; } = null!;

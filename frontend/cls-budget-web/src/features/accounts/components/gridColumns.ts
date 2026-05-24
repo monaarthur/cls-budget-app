@@ -4,6 +4,7 @@ export const GRID_COLUMNS = [
   { colId: "balance", label: "Balance" },
   { colId: "limit", label: "Limit" },
   { colId: "monthlyPayment", label: "Monthly" },
+  { colId: "paymentDay", label: "Payment day" },
   { colId: "accountCategoryName", label: "Category" },
   { colId: "isPaidOff", label: "Paid off" },
   { colId: "accountOpenDate", label: "Opened" },

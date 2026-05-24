@@ -34,6 +34,11 @@ public class BudgetsController(IBudgetService budgetService) : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateBudgetRequest request, CancellationToken cancellationToken)
     {
         var result = await budgetService.CreateAsync(request, cancellationToken);
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+
         return CreatedAtAction(nameof(GetById), new { id = result.Data!.BudgetId }, result);
     }
 
@@ -61,10 +66,50 @@ public class BudgetsController(IBudgetService budgetService) : ControllerBase
         return result.Success ? Ok(result) : NotFound(result);
     }
 
+    [HttpPost("{id:int}/accounts/{accountId:int}")]
+    public async Task<IActionResult> AddAccount(
+        int id,
+        int accountId,
+        CancellationToken cancellationToken)
+    {
+        var result = await budgetService.AddAccountAsync(id, accountId, cancellationToken);
+        if (!result.Success)
+        {
+            return MapAccountMutationFailure(result);
+        }
+
+        return Ok(result);
+    }
+
+    [HttpDelete("{id:int}/accounts/{accountId:int}")]
+    public async Task<IActionResult> RemoveAccount(
+        int id,
+        int accountId,
+        CancellationToken cancellationToken)
+    {
+        var result = await budgetService.RemoveAccountAsync(id, accountId, cancellationToken);
+        if (!result.Success)
+        {
+            return MapAccountMutationFailure(result);
+        }
+
+        return Ok(result);
+    }
+
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
         var result = await budgetService.DeleteAsync(id, cancellationToken);
         return result.Success ? NoContent() : NotFound(result);
+    }
+
+    private static IActionResult MapAccountMutationFailure(ApiResponse<BudgetResponse> result)
+    {
+        if (result.Errors.Any(e => e.Contains("was not found", StringComparison.OrdinalIgnoreCase)))
+        {
+            return new NotFoundObjectResult(result);
+        }
+
+        return new BadRequestObjectResult(result);
     }
 }

@@ -27,6 +27,7 @@ import {
 import type { AccountGridRow } from "@/features/accounts/utils/accountMapper";
 import {
   formatDateForGrid,
+  formatPaymentDay,
   parseGridDate,
   toUpdateAccountRequest,
 } from "@/features/accounts/utils/accountMapper";
@@ -53,6 +54,12 @@ function parseNumber(value: unknown): number {
 function parseOptionalNumber(value: unknown): number | null {
   if (value === "" || value === null || value === undefined) return null;
   const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseOptionalInteger(value: unknown): number | null {
+  if (value === "" || value === null || value === undefined) return null;
+  const n = Number.parseInt(String(value), 10);
   return Number.isFinite(n) ? n : null;
 }
 
@@ -158,6 +165,17 @@ export function AccountGrid() {
         ...currencyCol,
         valueParser: (p: ValueParserParams) =>
           parseOptionalNumber(p.newValue),
+      },
+      {
+        field: "paymentDay",
+        headerName: "Payment day",
+        editable: true,
+        minWidth: 110,
+        filter: "agNumberColumnFilter",
+        cellClass: "ag-cell-center",
+        valueFormatter: (p) => formatPaymentDay(p.value),
+        valueParser: (p: ValueParserParams) =>
+          parseOptionalInteger(p.newValue),
       },
       {
         colId: "accountCategoryName",

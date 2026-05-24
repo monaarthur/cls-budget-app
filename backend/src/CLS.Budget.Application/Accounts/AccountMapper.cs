@@ -15,6 +15,7 @@ internal static class AccountMapper
         Limit = account.Limit,
         AccountOpenDate = account.AccountOpenDate,
         MonthlyPayment = account.MonthlyPayment,
+        PaymentDay = account.PaymentDay,
         Phone = account.Phone,
         Email = account.Email,
         Url = account.Url,
@@ -35,6 +36,7 @@ internal static class AccountMapper
         Limit = request.Limit,
         AccountOpenDate = request.AccountOpenDate,
         MonthlyPayment = request.MonthlyPayment,
+        PaymentDay = request.PaymentDay,
         Phone = request.Phone,
         Email = request.Email,
         Url = request.Url,
@@ -56,6 +58,7 @@ internal static class AccountMapper
         account.Limit = request.Limit;
         account.AccountOpenDate = request.AccountOpenDate;
         account.MonthlyPayment = request.MonthlyPayment;
+        account.PaymentDay = request.PaymentDay;
         account.Phone = request.Phone;
         account.Email = request.Email;
         account.Url = request.Url;

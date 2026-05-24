@@ -241,4 +241,118 @@ public class BudgetServiceTests
         result.Success.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Contains("99", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public async Task AddAccountAsync_AddsAccountAndPayment_WhenValid()
+    {
+        var budget = new BudgetModel
+        {
+            BudgetId = 1,
+            Name = "May 2026",
+            StartPeriod = new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndPeriod = new DateTime(2026, 5, 31, 0, 0, 0, DateTimeKind.Utc),
+            BudgetTemplateId = 1,
+            AccountIds = "[1]"
+        };
+
+        var account = new Account
+        {
+            AccountId = 2,
+            Name = "B",
+            Number = "2",
+            MonthlyPayment = 50m,
+            AccountOpenDate = DateTime.UtcNow,
+            Phone = "p",
+            Email = "e",
+            Url = "u",
+            AccountCategoryId = 1
+        };
+
+        _budgetRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(budget);
+        _accountRepository.Setup(r => r.GetByIdAsync(2, It.IsAny<CancellationToken>())).ReturnsAsync(account);
+        _budgetRepository
+            .Setup(r => r.AddAccountWithPaymentAsync(
+                It.Is<BudgetModel>(b => b.AccountIds == "[1,2]"),
+                account,
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await _sut.AddAccountAsync(1, 2);
+
+        result.Success.Should().BeTrue();
+        result.Data!.AccountIds.Should().Equal(1, 2);
+        _budgetRepository.Verify(
+            r => r.AddAccountWithPaymentAsync(
+                It.Is<BudgetModel>(b => b.AccountIds == "[1,2]"),
+                account,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task AddAccountAsync_ReturnsFailure_WhenAccountAlreadyInBudget()
+    {
+        _budgetRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new BudgetModel
+            {
+                BudgetId = 1,
+                Name = "May 2026",
+                StartPeriod = DateTime.UtcNow,
+                EndPeriod = DateTime.UtcNow,
+                BudgetTemplateId = 1,
+                AccountIds = "[1,2]"
+            });
+
+        var result = await _sut.AddAccountAsync(1, 2);
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Contains("already included", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task RemoveAccountAsync_RemovesAccountAndPayment_WhenValid()
+    {
+        var budget = new BudgetModel
+        {
+            BudgetId = 1,
+            Name = "May 2026",
+            StartPeriod = DateTime.UtcNow,
+            EndPeriod = DateTime.UtcNow,
+            BudgetTemplateId = 1,
+            AccountIds = "[1,2]"
+        };
+
+        _budgetRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(budget);
+        _budgetRepository
+            .Setup(r => r.RemoveAccountWithPaymentAsync(
+                It.Is<BudgetModel>(b => b.AccountIds == "[1]"),
+                2,
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await _sut.RemoveAccountAsync(1, 2);
+
+        result.Success.Should().BeTrue();
+        result.Data!.AccountIds.Should().Equal(1);
+    }
+
+    [Fact]
+    public async Task RemoveAccountAsync_ReturnsFailure_WhenRemovingLastAccount()
+    {
+        _budgetRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new BudgetModel
+            {
+                BudgetId = 1,
+                Name = "May 2026",
+                StartPeriod = DateTime.UtcNow,
+                EndPeriod = DateTime.UtcNow,
+                BudgetTemplateId = 1,
+                AccountIds = "[1]"
+            });
+
+        var result = await _sut.RemoveAccountAsync(1, 1);
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Contains("last account", StringComparison.OrdinalIgnoreCase));
+    }
 }

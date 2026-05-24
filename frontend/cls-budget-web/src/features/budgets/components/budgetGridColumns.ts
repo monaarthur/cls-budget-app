@@ -1,6 +1,7 @@
 export const BUDGET_GRID_COLUMNS = [
   { colId: "accountName", label: "Account" },
   { colId: "accountCategoryName", label: "Category" },
+  { colId: "accountPaymentDay", label: "Payment day" },
   { colId: "amount", label: "Budgeted" },
   { colId: "paymentMade", label: "Paid" },
   { colId: "budgetPaymentStatusName", label: "Status" },

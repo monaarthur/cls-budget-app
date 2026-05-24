@@ -132,6 +132,55 @@ public class BudgetsControllerTests
         result.Should().BeOfType<NoContentResult>();
     }
 
+    [Fact]
+    public async Task AddAccount_ReturnsOk_WhenAccountAdded()
+    {
+        _service.Setup(s => s.AddAccountAsync(1, 2, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResponse<BudgetResponse>.Ok(new BudgetResponse
+            {
+                BudgetId = 1,
+                Name = "May 2026",
+                StartPeriod = DateTime.UtcNow,
+                EndPeriod = DateTime.UtcNow,
+                BudgetTemplateId = 1,
+                AccountIds = [1, 2]
+            }));
+
+        var result = await _sut.AddAccount(1, 2, CancellationToken.None);
+
+        result.Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
+    public async Task AddAccount_ReturnsBadRequest_WhenAccountAlreadyIncluded()
+    {
+        _service.Setup(s => s.AddAccountAsync(1, 2, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResponse<BudgetResponse>.Fail("Account with id 2 is already included in budget 1."));
+
+        var result = await _sut.AddAccount(1, 2, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task RemoveAccount_ReturnsOk_WhenAccountRemoved()
+    {
+        _service.Setup(s => s.RemoveAccountAsync(1, 2, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResponse<BudgetResponse>.Ok(new BudgetResponse
+            {
+                BudgetId = 1,
+                Name = "May 2026",
+                StartPeriod = DateTime.UtcNow,
+                EndPeriod = DateTime.UtcNow,
+                BudgetTemplateId = 1,
+                AccountIds = [1]
+            }));
+
+        var result = await _sut.RemoveAccount(1, 2, CancellationToken.None);
+
+        result.Should().BeOfType<OkObjectResult>();
+    }
+
     private static BudgetResponse SampleBudget() => new()
     {
         BudgetId = 1,

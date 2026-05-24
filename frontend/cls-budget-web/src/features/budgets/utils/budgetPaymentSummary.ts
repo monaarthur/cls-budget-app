@@ -1,11 +1,11 @@
 import type { BudgetGridRow } from "@/features/budgets/utils/budgetGridMapper";
 
-export type TrackedPaymentStatus = "scheduled" | "paid" | "planned";
+export type TrackedPaymentStatus = "pending" | "paid" | "scheduled";
 
 export interface PaymentHalfSummary {
-  scheduled: number;
+  pending: number;
   paid: number;
-  planned: number;
+  scheduled: number;
 }
 
 export interface BudgetPaymentHalfSummaries {
@@ -15,16 +15,16 @@ export interface BudgetPaymentHalfSummaries {
 }
 
 function emptySummary(): PaymentHalfSummary {
-  return { scheduled: 0, paid: 0, planned: 0 };
+  return { pending: 0, paid: 0, scheduled: 0 };
 }
 
 export function normalizeTrackedStatus(
   statusName: string,
 ): TrackedPaymentStatus | null {
   const normalized = statusName.trim().toLowerCase();
-  if (normalized === "pending" || normalized === "scheduled") return "scheduled";
+  if (normalized === "pending") return "pending";
   if (normalized === "paid") return "paid";
-  if (normalized === "planned") return "planned";
+  if (normalized === "scheduled") return "scheduled";
   return null;
 }
 

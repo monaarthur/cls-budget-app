@@ -7,6 +7,7 @@ export interface BudgetGridRow extends PaymentResponse {
   accountCategoryId: number;
   accountBalance: number;
   accountMonthlyPayment: number | null;
+  accountPaymentDay: number | null;
 }
 
 export function buildBudgetGridRows(
@@ -22,6 +23,7 @@ export function buildBudgetGridRows(
       accountCategoryId: account?.accountCategoryId ?? 0,
       accountBalance: account?.balance ?? 0,
       accountMonthlyPayment: account?.monthlyPayment ?? null,
+      accountPaymentDay: account?.paymentDay ?? null,
     };
   });
 }

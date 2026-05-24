@@ -27,6 +27,7 @@ internal static class MonthlyBillsRowMapper
             Limit = MoneyParser.ParseOrDefault(row.CreditLimit),
             AccountOpenDate = ParseDueDate(row.DueDate) ?? DateTime.UtcNow.Date,
             MonthlyPayment = MoneyParser.ParseNullable(row.MonthlyPayment),
+            PaymentDay = ParsePaymentDay(row),
             Phone = ImportPhone,
             Email = ImportEmail,
             Url = NormalizeUrl(row.Url),
@@ -46,11 +47,6 @@ internal static class MonthlyBillsRowMapper
         if (!string.IsNullOrWhiteSpace(row.Status))
         {
             parts.Add($"Status: {row.Status.Trim()}");
-        }
-
-        if (!string.IsNullOrWhiteSpace(row.DueDay))
-        {
-            parts.Add($"Due day: {row.DueDay.Trim()}");
         }
 
         return parts.Count == 0 ? "Imported from MonthlyPayments" : string.Join("; ", parts);
@@ -84,6 +80,19 @@ internal static class MonthlyBillsRowMapper
         }
 
         sb.Append(line.Trim());
+    }
+
+    private static int? ParsePaymentDay(MonthlyBillsCsvRow row)
+    {
+        if (!string.IsNullOrWhiteSpace(row.DueDay)
+            && int.TryParse(row.DueDay.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var day)
+            && day is >= 1 and <= 31)
+        {
+            return day;
+        }
+
+        var dueDate = ParseDueDate(row.DueDate);
+        return dueDate?.Day;
     }
 
     private static DateTime? ParseDueDate(string? value)

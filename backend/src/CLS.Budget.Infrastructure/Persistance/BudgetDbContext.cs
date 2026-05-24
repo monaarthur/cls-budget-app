@@ -35,6 +35,7 @@ public class BudgetDbContext(DbContextOptions<BudgetDbContext> options) : DbCont
             e.Property(x => x.Balance).IsRequired();
             e.Property(x => x.Limit);
             e.Property(x => x.MonthlyPayment);
+            e.Property(x => x.PaymentDay);
             e.Property(x => x.Phone).HasMaxLength(50);
             e.Property(x => x.Email).HasMaxLength(200);
             e.Property(x => x.Url).HasMaxLength(500);

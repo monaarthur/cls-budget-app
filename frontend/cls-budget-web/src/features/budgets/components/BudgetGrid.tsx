@@ -24,8 +24,11 @@ import {
 } from "@/features/accounts/data/accountCategories";
 import {
   formatDateForGrid,
+  formatPaymentDay,
   parseGridDate,
+  toUpdateAccountRequest,
 } from "@/features/accounts/utils/accountMapper";
+import type { AccountResponse } from "@/features/accounts/types/account";
 import { accountGridTheme } from "@/features/accounts/components/accountGridTheme";
 import { BudgetColumnPicker } from "@/features/budgets/components/BudgetColumnPicker";
 import { BUDGET_DEFAULT_HIDDEN_COLUMNS } from "@/features/budgets/components/budgetGridColumns";
@@ -65,6 +68,12 @@ function parseOptionalNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function parseOptionalInteger(value: unknown): number | null {
+  if (value === "" || value === null || value === undefined) return null;
+  const n = Number.parseInt(String(value), 10);
+  return Number.isFinite(n) ? n : null;
+}
+
 const currencyFormatter = (params: ValueFormatterParams<BudgetGridRow>) => {
   if (params.value === null || params.value === undefined) return "";
   return formatCurrencyDetailed(Number(params.value));
@@ -90,9 +99,9 @@ function PaymentHalfPanel({
       <p className="text-sm font-semibold text-white">{title}</p>
       <dl className="mt-3 space-y-2 text-sm">
         <div className="flex items-center justify-between gap-4">
-          <dt className="text-white/75">Scheduled</dt>
+          <dt className="text-white/75">Pending</dt>
           <dd className="font-semibold tabular-nums text-white">
-            {formatCurrency(summary.scheduled)}
+            {formatCurrency(summary.pending)}
           </dd>
         </div>
         <div className="flex items-center justify-between gap-4">
@@ -102,9 +111,9 @@ function PaymentHalfPanel({
           </dd>
         </div>
         <div className="flex items-center justify-between gap-4">
-          <dt className="text-white/75">Planned</dt>
+          <dt className="text-white/75">Scheduled</dt>
           <dd className="font-semibold tabular-nums text-white">
-            {formatCurrency(summary.planned)}
+            {formatCurrency(summary.scheduled)}
           </dd>
         </div>
       </dl>
@@ -115,6 +124,8 @@ function PaymentHalfPanel({
 export function BudgetGrid({ budgetId }: { budgetId: number }) {
   const gridRef = useRef<AgGridReact<BudgetGridRow>>(null);
   const dirtyIds = useRef(new Set<number>());
+  const dirtyAccountIds = useRef(new Set<number>());
+  const accountsByIdRef = useRef<Map<number, AccountResponse>>(new Map());
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const columnStateReadyRef = useRef(false);
   const [rowData, setRowData] = useState<BudgetGridRow[]>([]);
@@ -159,6 +170,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
           account,
         ]),
       );
+      accountsByIdRef.current = accountsById;
       const payments = (paymentsResult.data ?? []).filter(
         (payment) => payment.budgetId === budgetId,
       );
@@ -181,6 +193,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         ),
       );
       dirtyIds.current.clear();
+      dirtyAccountIds.current.clear();
       setPendingCount(0);
     } catch (err) {
       const message =
@@ -250,6 +263,18 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
             b.accountName,
           );
         },
+      },
+      {
+        colId: "accountPaymentDay",
+        field: "accountPaymentDay",
+        headerName: "Payment day",
+        editable: true,
+        minWidth: 110,
+        filter: "agNumberColumnFilter",
+        cellClass: "ag-cell-center",
+        valueFormatter: (p) => formatPaymentDay(p.value),
+        valueParser: (p: ValueParserParams) =>
+          parseOptionalInteger(p.newValue),
       },
       {
         colId: "amount",
@@ -386,6 +411,10 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         return "account-row-dirty";
       }
 
+      if (dirtyAccountIds.current.has(params.data.accountId)) {
+        return "account-row-dirty";
+      }
+
       return getBudgetStatusRowClass(params.data.budgetPaymentStatusName);
     },
     [pendingCount],
@@ -394,8 +423,16 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   const onCellValueChanged = useCallback(
     (event: CellValueChangedEvent<BudgetGridRow>) => {
       if (!event.data || event.oldValue === event.newValue) return;
-      dirtyIds.current.add(event.data.budgetPaymentId);
-      setPendingCount(dirtyIds.current.size);
+
+      if (event.column.getColId() === "accountPaymentDay") {
+        dirtyAccountIds.current.add(event.data.accountId);
+      } else {
+        dirtyIds.current.add(event.data.budgetPaymentId);
+      }
+
+      setPendingCount(
+        dirtyIds.current.size + dirtyAccountIds.current.size,
+      );
       setSummaryTick((tick) => tick + 1);
       event.api.redrawRows({ rowNodes: [event.node] });
     },
@@ -406,21 +443,48 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
     const rowsToSave = rowData.filter((row) =>
       dirtyIds.current.has(row.budgetPaymentId),
     );
-    if (rowsToSave.length === 0) return;
+    const accountIdsToSave = [...dirtyAccountIds.current];
+    if (rowsToSave.length === 0 && accountIdsToSave.length === 0) return;
 
     setSaving(true);
     setStatus(null);
     try {
-      await Promise.all(
-        rowsToSave.map((row) =>
+      await Promise.all([
+        ...rowsToSave.map((row) =>
           paymentsApi.update(row.budgetPaymentId, toUpdatePaymentRequest(row)),
         ),
-      );
+        ...accountIdsToSave.map(async (accountId) => {
+          const account = accountsByIdRef.current.get(accountId);
+          const row = rowData.find((r) => r.accountId === accountId);
+          if (!account || !row) return;
+
+          await accountsApi.update(
+            accountId,
+            toUpdateAccountRequest({
+              ...account,
+              paymentDay: row.accountPaymentDay,
+            }),
+          );
+        }),
+      ]);
       dirtyIds.current.clear();
+      dirtyAccountIds.current.clear();
       setPendingCount(0);
+
+      const parts: string[] = [];
+      if (rowsToSave.length > 0) {
+        parts.push(
+          `${rowsToSave.length} payment${rowsToSave.length === 1 ? "" : "s"}`,
+        );
+      }
+      if (accountIdsToSave.length > 0) {
+        parts.push(
+          `${accountIdsToSave.length} account${accountIdsToSave.length === 1 ? "" : "s"}`,
+        );
+      }
       setStatus({
         type: "success",
-        message: `Saved ${rowsToSave.length} payment${rowsToSave.length === 1 ? "" : "s"}.`,
+        message: `Saved ${parts.join(" and ")}.`,
       });
       await loadData();
     } catch (err) {

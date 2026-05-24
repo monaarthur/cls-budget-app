@@ -22,18 +22,27 @@ function getBaseUrl(): string {
   return baseUrl.replace(/\/$/, "");
 }
 
+const API_UNAVAILABLE_MESSAGE =
+  "Cannot reach the budget API. Start the backend with: dotnet run --project src/CLS.Budget.Api --launch-profile http";
+
 async function request<T>(
   path: string,
   init?: RequestInit,
 ): Promise<ApiResponse<T>> {
-  const res = await fetch(`${getBaseUrl()}${path}`, {
-    cache: "no-store",
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
-  });
+  let res: Response;
+
+  try {
+    res = await fetch(`${getBaseUrl()}${path}`, {
+      cache: "no-store",
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...init?.headers,
+      },
+    });
+  } catch {
+    throw new ApiError(0, API_UNAVAILABLE_MESSAGE);
+  }
 
   if (res.status === 204) {
     return { success: true, data: null, errors: [] };
@@ -41,21 +50,37 @@ async function request<T>(
 
   const text = await res.text();
   if (!text) {
-    throw new ApiError(res.status, res.statusText);
+    if (res.status >= 500) {
+      throw new ApiError(res.status, API_UNAVAILABLE_MESSAGE);
+    }
+
+    throw new ApiError(res.status, res.statusText || "Empty API response");
   }
 
   let body: ApiResponse<T>;
   try {
     body = JSON.parse(text) as ApiResponse<T>;
   } catch {
+    if (res.status >= 500) {
+      throw new ApiError(res.status, API_UNAVAILABLE_MESSAGE);
+    }
+
     throw new ApiError(res.status, "Invalid API response");
   }
 
   if (!res.ok) {
     throw new ApiError(
       res.status,
-      body.errors[0] ?? res.statusText,
-      body.errors,
+      body.errors?.[0] ?? res.statusText,
+      body.errors ?? [],
+    );
+  }
+
+  if (body.success === false) {
+    throw new ApiError(
+      res.status,
+      body.errors?.[0] ?? "Request failed",
+      body.errors ?? [],
     );
   }
 

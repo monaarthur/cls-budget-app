@@ -49,8 +49,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
     app.UseCors("FrontendDev");
 }
+else
+{
+    app.UseHttpsRedirection();
+}
 
-app.UseHttpsRedirection();
 app.MapControllers();
 
 app.Run();

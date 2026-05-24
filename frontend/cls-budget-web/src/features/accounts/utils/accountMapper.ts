@@ -14,6 +14,7 @@ export function toUpdateAccountRequest(row: AccountGridRow): UpdateAccountReques
     limit: row.limit,
     accountOpenDate: row.accountOpenDate,
     monthlyPayment: row.monthlyPayment,
+    paymentDay: row.paymentDay,
     phone: row.phone,
     email: row.email,
     url: row.url,
@@ -28,6 +29,13 @@ export function toUpdateAccountRequest(row: AccountGridRow): UpdateAccountReques
 export function formatDateForGrid(iso: string | null): string {
   if (!iso) return "";
   return iso.slice(0, 10);
+}
+
+export function formatPaymentDay(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "";
+  const day = Number(value);
+  if (!Number.isFinite(day)) return "";
+  return String(day).padStart(2, "0");
 }
 
 export function parseGridDate(value: string | null | undefined): string | null {

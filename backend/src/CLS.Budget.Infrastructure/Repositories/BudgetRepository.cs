@@ -119,6 +119,55 @@ public sealed class BudgetRepository(BudgetDbContext dbContext) : IBudgetReposit
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task AddAccountWithPaymentAsync(
+        BudgetModel budget,
+        Account account,
+        CancellationToken cancellationToken = default)
+    {
+        dbContext.Budgets.Update(budget);
+
+        var existingPayment = await dbContext.BudgetPayments
+            .FirstOrDefaultAsync(
+                p => p.BudgetId == budget.BudgetId && p.AccountId == account.AccountId,
+                cancellationToken);
+
+        if (existingPayment is null)
+        {
+            dbContext.BudgetPayments.Add(new BudgetPayment
+            {
+                BudgetId = budget.BudgetId,
+                AccountId = account.AccountId,
+                PaymentMade = account.MonthlyPayment ?? 0m,
+                Amount = account.MonthlyPayment ?? 0m,
+                PaymentDate = budget.StartPeriod,
+                BudgetPaymentStatusId = BudgetPaymentStatusIds.Scheduled,
+                IsCleared = false
+            });
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task RemoveAccountWithPaymentAsync(
+        BudgetModel budget,
+        int accountId,
+        CancellationToken cancellationToken = default)
+    {
+        dbContext.Budgets.Update(budget);
+
+        var payment = await dbContext.BudgetPayments
+            .FirstOrDefaultAsync(
+                p => p.BudgetId == budget.BudgetId && p.AccountId == accountId,
+                cancellationToken);
+
+        if (payment is not null)
+        {
+            dbContext.BudgetPayments.Remove(payment);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task DeleteAsync(BudgetModel budget, CancellationToken cancellationToken = default)
     {
         dbContext.Budgets.Remove(budget);

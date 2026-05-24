@@ -32,7 +32,7 @@ if (command == "validate")
     return report.IsValid ? 0 : 1;
 }
 
-if (command is not ("accounts" or "payment-sources" or "may-budget"))
+if (command is not ("accounts" or "payment-sources" or "may-budget" or "payment-days"))
 {
     Console.Error.WriteLine($"Unknown command: {argsList[0]}");
     PrintHelp();
@@ -57,10 +57,14 @@ var activeOnly = argsList.Contains("--active-only");
 var dryRun = argsList.Contains("--dry-run");
 
 var host = Host.CreateDefaultBuilder(args)
-    .ConfigureAppConfiguration((_, config) =>
+    .ConfigureAppConfiguration((context, config) =>
     {
         config.SetBasePath(AppContext.BaseDirectory);
         config.AddJsonFile("appsettings.json", optional: false, reloadOnChange: false);
+        config.AddJsonFile(
+            $"appsettings.{context.HostingEnvironment.EnvironmentName}.json",
+            optional: true,
+            reloadOnChange: false);
         config.AddEnvironmentVariables();
     })
     .ConfigureServices((context, services) =>
@@ -69,6 +73,7 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddInfrastructure(context.Configuration);
         services.AddSingleton<CreateAccountRequestValidator>();
         services.AddScoped<AccountCsvImporter>();
+        services.AddScoped<PaymentDayUpdateImporter>();
         services.AddScoped<PaymentSourceCsvImporter>();
         services.AddScoped<MayBudgetCsvImporter>();
     })
@@ -86,6 +91,18 @@ if (command == "accounts")
 
     var summary = await importer.ImportAsync(csvPath, activeOnly, dryRun);
     PrintSummary(summary.Imported, summary.Skipped, summary.Failed, summary.Messages);
+    return summary.Failed > 0 ? 1 : 0;
+}
+
+if (command == "payment-days")
+{
+    var importer = scope.ServiceProvider.GetRequiredService<PaymentDayUpdateImporter>();
+    Console.WriteLine($"Updating account payment days from: {csvPath}");
+    Console.WriteLine($"  Dry run: {dryRun}");
+    Console.WriteLine();
+
+    var summary = await importer.ImportAsync(csvPath, dryRun);
+    PrintPaymentDaySummary(summary);
     return summary.Failed > 0 ? 1 : 0;
 }
 
@@ -157,6 +174,20 @@ static void PrintSummary(int imported, int skipped, int failed, IReadOnlyList<st
     }
 }
 
+static void PrintPaymentDaySummary(PaymentDayUpdateSummary summary)
+{
+    Console.WriteLine($"Updated:   {summary.Updated}");
+    Console.WriteLine($"Unchanged: {summary.Unchanged}");
+    Console.WriteLine($"Skipped:   {summary.Skipped}");
+    Console.WriteLine($"Not found: {summary.NotFound}");
+    Console.WriteLine($"Failed:    {summary.Failed}");
+
+    foreach (var message in summary.Messages)
+    {
+        Console.WriteLine($"  - {message}");
+    }
+}
+
 static void PrintMayBudgetSummary(MayBudgetImportSummary summary)
 {
     Console.WriteLine($"Imported: {summary.Imported}");
@@ -204,11 +235,15 @@ static void PrintHelp()
         Usage:
           dotnet run --project src/CLS.Budget.Import -- validate <accounts.csv>
           dotnet run --project src/CLS.Budget.Import -- accounts <file.csv> [--active-only] [--dry-run]
+          dotnet run --project src/CLS.Budget.Import -- payment-days <file.csv> [--dry-run]
           dotnet run --project src/CLS.Budget.Import -- payment-sources <file.csv> [--dry-run]
           dotnet run --project src/CLS.Budget.Import -- may-budget <file.csv> [--month 5] [--year 2026] [--template-id 1] [--active-only] [--dry-run]
 
         May budget CSV: spreadsheet export with a header row containing "Account / Bill" and "Amount To Pay".
         Creates the budget for the month/year if missing, then inserts or updates BudgetPayment rows.
+
+        Payment days CSV: header row with account name, number, and payment date/day.
+        Matches existing accounts and updates PaymentDay only (1–31).
 
         Example:
           dotnet run --project src/CLS.Budget.Import -- may-budget data\\MayBudget.csv --dry-run

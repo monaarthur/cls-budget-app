@@ -22,5 +22,13 @@ public interface IBudgetRepository
         BudgetModel newBudget,
         CancellationToken cancellationToken = default);
     Task UpdateAsync(BudgetModel budget, CancellationToken cancellationToken = default);
+    Task AddAccountWithPaymentAsync(
+        BudgetModel budget,
+        Account account,
+        CancellationToken cancellationToken = default);
+    Task RemoveAccountWithPaymentAsync(
+        BudgetModel budget,
+        int accountId,
+        CancellationToken cancellationToken = default);
     Task DeleteAsync(BudgetModel budget, CancellationToken cancellationToken = default);
 }

@@ -7,6 +7,7 @@ export interface AccountResponse {
   limit: number;
   accountOpenDate: string;
   monthlyPayment: number | null;
+  paymentDay: number | null;
   phone: string;
   email: string;
   url: string;
@@ -26,6 +27,7 @@ export interface CreateAccountRequest {
   limit: number;
   accountOpenDate: string;
   monthlyPayment?: number | null;
+  paymentDay?: number | null;
   phone: string;
   email: string;
   url: string;

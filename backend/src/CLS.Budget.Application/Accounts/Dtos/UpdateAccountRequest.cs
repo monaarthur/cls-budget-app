@@ -9,6 +9,7 @@ public sealed class UpdateAccountRequest
     public decimal Limit { get; init; }
     public DateTime AccountOpenDate { get; init; }
     public decimal? MonthlyPayment { get; init; }
+    public int? PaymentDay { get; init; }
     public string Phone { get; init; } = null!;
     public string Email { get; init; } = null!;
     public string Url { get; init; } = null!;

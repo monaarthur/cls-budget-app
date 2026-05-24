@@ -185,6 +185,67 @@ public sealed class BudgetService(
         return ApiResponse<BudgetResponse>.Ok(BudgetMapper.ToResponse(budget));
     }
 
+    public async Task<ApiResponse<BudgetResponse>> AddAccountAsync(
+        int budgetId,
+        int accountId,
+        CancellationToken cancellationToken = default)
+    {
+        var budget = await budgetRepository.GetByIdAsync(budgetId, cancellationToken);
+        if (budget is null)
+        {
+            return ApiResponse<BudgetResponse>.Fail($"Budget with id {budgetId} was not found.");
+        }
+
+        var accountIds = BudgetTemplateAccountIdsParser.Parse(budget.AccountIds).ToList();
+        if (accountIds.Contains(accountId))
+        {
+            return ApiResponse<BudgetResponse>.Fail(
+                $"Account with id {accountId} is already included in budget {budgetId}.");
+        }
+
+        var account = await accountRepository.GetByIdAsync(accountId, cancellationToken);
+        if (account is null)
+        {
+            return ApiResponse<BudgetResponse>.Fail($"Account with id {accountId} was not found.");
+        }
+
+        accountIds.Add(accountId);
+        budget.AccountIds = BudgetTemplateAccountIdsParser.Serialize(accountIds);
+        await budgetRepository.AddAccountWithPaymentAsync(budget, account, cancellationToken);
+
+        return ApiResponse<BudgetResponse>.Ok(BudgetMapper.ToResponse(budget));
+    }
+
+    public async Task<ApiResponse<BudgetResponse>> RemoveAccountAsync(
+        int budgetId,
+        int accountId,
+        CancellationToken cancellationToken = default)
+    {
+        var budget = await budgetRepository.GetByIdAsync(budgetId, cancellationToken);
+        if (budget is null)
+        {
+            return ApiResponse<BudgetResponse>.Fail($"Budget with id {budgetId} was not found.");
+        }
+
+        var accountIds = BudgetTemplateAccountIdsParser.Parse(budget.AccountIds).ToList();
+        if (!accountIds.Contains(accountId))
+        {
+            return ApiResponse<BudgetResponse>.Fail(
+                $"Account with id {accountId} is not included in budget {budgetId}.");
+        }
+
+        if (accountIds.Count == 1)
+        {
+            return ApiResponse<BudgetResponse>.Fail("Cannot remove the last account from a budget.");
+        }
+
+        accountIds.Remove(accountId);
+        budget.AccountIds = BudgetTemplateAccountIdsParser.Serialize(accountIds);
+        await budgetRepository.RemoveAccountWithPaymentAsync(budget, accountId, cancellationToken);
+
+        return ApiResponse<BudgetResponse>.Ok(BudgetMapper.ToResponse(budget));
+    }
+
     public async Task<ApiResponse<object>> DeleteAsync(
         int budgetId,
         CancellationToken cancellationToken = default)
