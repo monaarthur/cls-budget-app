@@ -38,12 +38,23 @@ import {
   restoreColumnState,
   saveColumnState,
 } from "@/features/accounts/components/gridColumnState";
+import {
+  editableUnlessPinned,
+  isPinnedTotalRow,
+  recalculatePinnedBottomRowData,
+  type PinnedTotalsConfig,
+} from "@/features/accounts/components/gridPinnedTotals";
 import { ApiError } from "@/lib/api/client";
 import { formatCurrency, formatCurrencyDetailed } from "@/lib/format";
 
 import "@/features/accounts/components/account-grid.css";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
+
+const ACCOUNT_PINNED_TOTALS: PinnedTotalsConfig = {
+  labelField: "name",
+  sumFields: ["balance", "limit", "monthlyPayment"],
+};
 
 function parseNumber(value: unknown): number {
   if (value === "" || value === null || value === undefined) return 0;
@@ -87,6 +98,9 @@ export function AccountGrid() {
   const [pendingCount, setPendingCount] = useState(0);
   const [quickFilter, setQuickFilter] = useState("");
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
+  const [pinnedBottomRowData, setPinnedBottomRowData] = useState<
+    Record<string, unknown>[]
+  >([]);
   const [summaryTick, setSummaryTick] = useState(0);
   const [status, setStatus] = useState<{
     type: "success" | "error";
@@ -130,7 +144,7 @@ export function AccountGrid() {
       {
         field: "name",
         headerName: "Name",
-        editable: true,
+        editable: editableUnlessPinned(),
         filter: "agTextColumnFilter",
         minWidth: 180,
         pinned: "left",
@@ -139,28 +153,28 @@ export function AccountGrid() {
       {
         field: "number",
         headerName: "Number",
-        editable: true,
+        editable: editableUnlessPinned(),
         filter: "agTextColumnFilter",
         minWidth: 120,
       },
       {
         field: "balance",
         headerName: "Balance",
-        editable: true,
+        editable: editableUnlessPinned(),
         minWidth: 130,
         ...currencyCol,
       },
       {
         field: "limit",
         headerName: "Limit",
-        editable: true,
+        editable: editableUnlessPinned(),
         minWidth: 120,
         ...currencyCol,
       },
       {
         field: "monthlyPayment",
         headerName: "Monthly",
-        editable: true,
+        editable: editableUnlessPinned(),
         minWidth: 120,
         ...currencyCol,
         valueParser: (p: ValueParserParams) =>
@@ -169,7 +183,7 @@ export function AccountGrid() {
       {
         field: "paymentDay",
         headerName: "Payment day",
-        editable: true,
+        editable: editableUnlessPinned(),
         minWidth: 110,
         filter: "agNumberColumnFilter",
         cellClass: "ag-cell-center",
@@ -180,7 +194,7 @@ export function AccountGrid() {
       {
         colId: "accountCategoryName",
         headerName: "Category",
-        editable: true,
+        editable: editableUnlessPinned(),
         filter: "agTextColumnFilter",
         minWidth: 150,
         cellClass: "ag-cell-category",
@@ -218,7 +232,7 @@ export function AccountGrid() {
       {
         field: "isPaidOff",
         headerName: "Paid off",
-        editable: true,
+        editable: editableUnlessPinned(),
         cellEditor: "agCheckboxCellEditor",
         filter: true,
         width: 110,
@@ -227,7 +241,7 @@ export function AccountGrid() {
       {
         field: "accountOpenDate",
         headerName: "Opened",
-        editable: true,
+        editable: editableUnlessPinned(),
         filter: "agDateColumnFilter",
         valueFormatter: (p) => formatDateForGrid(p.value ?? null),
         valueParser: (p) =>
@@ -237,7 +251,7 @@ export function AccountGrid() {
       {
         field: "paidOffDate",
         headerName: "Paid off date",
-        editable: true,
+        editable: editableUnlessPinned(),
         filter: "agDateColumnFilter",
         valueFormatter: (p) => formatDateForGrid(p.value ?? null),
         valueParser: (p) => parseGridDate(String(p.newValue ?? "")),
@@ -246,42 +260,42 @@ export function AccountGrid() {
       {
         field: "phone",
         headerName: "Phone",
-        editable: true,
+        editable: editableUnlessPinned(),
         filter: "agTextColumnFilter",
         minWidth: 130,
       },
       {
         field: "email",
         headerName: "Email",
-        editable: true,
+        editable: editableUnlessPinned(),
         filter: "agTextColumnFilter",
         minWidth: 200,
       },
       {
         field: "url",
         headerName: "URL",
-        editable: true,
+        editable: editableUnlessPinned(),
         filter: "agTextColumnFilter",
         minWidth: 220,
       },
       {
         field: "username",
         headerName: "Username",
-        editable: true,
+        editable: editableUnlessPinned(),
         filter: "agTextColumnFilter",
         minWidth: 130,
       },
       {
         field: "description",
         headerName: "Description",
-        editable: true,
+        editable: editableUnlessPinned(),
         filter: "agTextColumnFilter",
         minWidth: 200,
       },
       {
         field: "notes",
         headerName: "Notes",
-        editable: true,
+        editable: editableUnlessPinned(),
         filter: "agTextColumnFilter",
         minWidth: 240,
         flex: 1,
@@ -304,8 +318,19 @@ export function AccountGrid() {
     [],
   );
 
+  const refreshPinnedTotals = useCallback((api?: GridApi | null) => {
+    const targetApi = api ?? gridRef.current?.api;
+    if (!targetApi) return;
+    setPinnedBottomRowData(
+      recalculatePinnedBottomRowData(targetApi, ACCOUNT_PINNED_TOTALS),
+    );
+  }, []);
+
   const getRowClass = useCallback(
     (params: RowClassParams<AccountGridRow>) => {
+      if (isPinnedTotalRow(params.node)) {
+        return "account-grid-total-row";
+      }
       if (params.data && dirtyIds.current.has(params.data.accountId)) {
         return "account-row-dirty";
       }
@@ -321,8 +346,9 @@ export function AccountGrid() {
       setPendingCount(dirtyIds.current.size);
       setSummaryTick((tick) => tick + 1);
       event.api.redrawRows({ rowNodes: [event.node] });
+      refreshPinnedTotals(event.api);
     },
-    [],
+    [refreshPinnedTotals],
   );
 
   const handleSave = async () => {
@@ -383,6 +409,10 @@ export function AccountGrid() {
     [],
   );
 
+  useEffect(() => {
+    refreshPinnedTotals();
+  }, [rowData, summaryTick, refreshPinnedTotals]);
+
   const onGridReady = (event: GridReadyEvent) => {
     setGridApi(event.api);
 
@@ -396,6 +426,7 @@ export function AccountGrid() {
     }
 
     columnStateReadyRef.current = true;
+    refreshPinnedTotals(event.api);
   };
 
   return (
@@ -490,11 +521,13 @@ export function AccountGrid() {
             ref={gridRef}
             theme={accountGridTheme}
             rowData={rowData}
+            pinnedBottomRowData={pinnedBottomRowData}
             columnDefs={columnDefs}
             defaultColDef={defaultColDef}
             getRowClass={getRowClass}
             onCellValueChanged={onCellValueChanged}
             onGridReady={onGridReady}
+            onFilterChanged={() => refreshPinnedTotals()}
             onColumnVisible={scheduleColumnStateSave}
             onColumnMoved={scheduleColumnStateSave}
             onColumnResized={scheduleColumnStateSave}

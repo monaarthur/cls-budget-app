@@ -18,6 +18,12 @@ export interface BudgetPaymentStatusResponse {
   description: string | null;
 }
 
+export interface PaymentSourceResponse {
+  paymentSourceId: number;
+  name: string;
+  description: string | null;
+}
+
 export interface CreatePaymentRequest {
   budgetId: number;
   accountId: number;

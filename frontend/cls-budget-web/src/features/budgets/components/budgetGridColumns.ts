@@ -19,5 +19,4 @@ export const BUDGET_DEFAULT_HIDDEN_COLUMNS = new Set([
   "accountBalance",
   "accountMonthlyPayment",
   "clearedDate",
-  "paymentSourceId",
 ]);

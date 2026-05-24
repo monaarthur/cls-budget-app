@@ -9,13 +9,14 @@ import {
   type ColDef,
   type GridApi,
   type GridReadyEvent,
+  type ICellRendererParams,
   type RowClassParams,
   type ValueFormatterParams,
   type ValueGetterParams,
   type ValueParserParams,
   type ValueSetterParams,
 } from "ag-grid-community";
-import { RefreshCw, RotateCcw, Save, Search } from "lucide-react";
+import { Plus, RefreshCw, RotateCcw, Save, Search } from "lucide-react";
 import { accountsApi } from "@/features/accounts/api/accountsApi";
 import {
   getAccountCategoryName,
@@ -30,7 +31,14 @@ import {
 } from "@/features/accounts/utils/accountMapper";
 import type { AccountResponse } from "@/features/accounts/types/account";
 import { accountGridTheme } from "@/features/accounts/components/accountGridTheme";
+import {
+  editableUnlessPinned,
+  isPinnedTotalRow,
+  recalculatePinnedBottomRowData,
+  type PinnedTotalsConfig,
+} from "@/features/accounts/components/gridPinnedTotals";
 import { BudgetColumnPicker } from "@/features/budgets/components/BudgetColumnPicker";
+import { AddBudgetAccountDialog } from "@/features/budgets/components/AddBudgetAccountDialog";
 import { BUDGET_DEFAULT_HIDDEN_COLUMNS } from "@/features/budgets/components/budgetGridColumns";
 import {
   restoreBudgetColumnState,
@@ -49,6 +57,7 @@ import {
   type BudgetGridRow,
 } from "@/features/budgets/utils/budgetGridMapper";
 import { paymentsApi } from "@/features/payments/api/paymentsApi";
+import { paymentSourcesApi } from "@/features/payments/api/paymentSourcesApi";
 import { ApiError } from "@/lib/api/client";
 import { formatCurrency, formatCurrencyDetailed } from "@/lib/format";
 
@@ -86,6 +95,19 @@ const currencyCol = {
   headerClass: "ag-cell-currency-header",
   filter: "agNumberColumnFilter" as const,
 };
+
+const PAYMENT_SOURCE_NONE = "(None)";
+
+const BUDGET_PINNED_TOTALS: PinnedTotalsConfig = {
+  labelField: "accountName",
+  sumFields: ["amount", "paymentMade", "accountBalance", "accountMonthlyPayment"],
+};
+
+interface BudgetGridContext {
+  rowCount: number;
+  accountMutating: boolean;
+  onRemoveAccount: (accountId: number, accountName: string) => void;
+}
 
 function PaymentHalfPanel({
   title,
@@ -136,11 +158,21 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   const [statusByName, setStatusByName] = useState<Map<string, number>>(
     new Map(),
   );
+  const [paymentSourceNames, setPaymentSourceNames] = useState<string[]>([]);
+  const [paymentSourceByName, setPaymentSourceByName] = useState<
+    Map<string, number>
+  >(new Map());
+  const [allAccounts, setAllAccounts] = useState<AccountResponse[]>([]);
+  const [addAccountOpen, setAddAccountOpen] = useState(false);
+  const [accountMutating, setAccountMutating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [quickFilter, setQuickFilter] = useState("");
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
+  const [pinnedBottomRowData, setPinnedBottomRowData] = useState<
+    Record<string, unknown>[]
+  >([]);
   const [summaryTick, setSummaryTick] = useState(0);
   const [status, setStatus] = useState<{
     type: "success" | "error";
@@ -151,13 +183,19 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
     setLoading(true);
     setStatus(null);
     try {
-      const [budgetResult, paymentsResult, accountsResult, statusesResult] =
-        await Promise.all([
-          budgetsApi.getById(budgetId),
-          paymentsApi.getAll(),
-          accountsApi.getAll(),
-          paymentsApi.getStatuses(),
-        ]);
+      const [
+        budgetResult,
+        paymentsResult,
+        accountsResult,
+        statusesResult,
+        paymentSourcesResult,
+      ] = await Promise.all([
+        budgetsApi.getById(budgetId),
+        paymentsApi.getAll(),
+        accountsApi.getAll(),
+        paymentsApi.getStatuses(),
+        paymentSourcesApi.getAll().catch(() => null),
+      ]);
 
       const budget = budgetResult.data;
       if (!budget) {
@@ -171,6 +209,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         ]),
       );
       accountsByIdRef.current = accountsById;
+      setAllAccounts(accountsResult.data ?? []);
       const payments = (paymentsResult.data ?? []).filter(
         (payment) => payment.budgetId === budgetId,
       );
@@ -179,6 +218,12 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       setStatusNames(statuses.map((s) => s.name));
       setStatusByName(
         new Map(statuses.map((s) => [s.name, s.budgetPaymentStatusId])),
+      );
+
+      const sources = paymentSourcesResult?.data ?? [];
+      setPaymentSourceNames(sources.map((source) => source.name));
+      setPaymentSourceByName(
+        new Map(sources.map((source) => [source.name, source.paymentSourceId])),
       );
 
       setBudgetName(budget.name);
@@ -225,6 +270,79 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
     };
   }, [rowData, summaryTick, budgetStartPeriod]);
 
+  const includedAccountIds = useMemo(
+    () => new Set(rowData.map((row) => row.accountId)),
+    [rowData],
+  );
+
+  const ensureAccountMutationAllowed = useCallback(() => {
+    if (pendingCount > 0) {
+      setStatus({
+        type: "error",
+        message:
+          "Save or discard unsaved changes before adding or removing accounts.",
+      });
+      return false;
+    }
+    return true;
+  }, [pendingCount]);
+
+  const handleRemoveAccount = useCallback(
+    async (accountId: number, accountName: string) => {
+      if (!ensureAccountMutationAllowed()) return;
+      if (rowData.length <= 1) return;
+      if (
+        !window.confirm(`Remove "${accountName}" from this budget?`)
+      ) {
+        return;
+      }
+
+      setAccountMutating(true);
+      setStatus(null);
+      try {
+        await budgetsApi.removeAccount(budgetId, accountId);
+        setStatus({
+          type: "success",
+          message: `Removed ${accountName} from the budget.`,
+        });
+        await loadData();
+      } catch (err) {
+        const message =
+          err instanceof ApiError
+            ? err.errors.join(", ") || err.message
+            : err instanceof Error
+              ? err.message
+              : "Failed to remove account";
+        setStatus({ type: "error", message });
+      } finally {
+        setAccountMutating(false);
+      }
+    },
+    [budgetId, ensureAccountMutationAllowed, loadData, rowData.length],
+  );
+
+  const gridContext = useMemo<BudgetGridContext>(
+    () => ({
+      rowCount: rowData.length,
+      accountMutating,
+      onRemoveAccount: handleRemoveAccount,
+    }),
+    [accountMutating, handleRemoveAccount, rowData.length],
+  );
+
+  const paymentSourceNameById = useMemo(() => {
+    const byId = new Map<number, string>();
+    for (const [name, id] of paymentSourceByName) {
+      byId.set(id, name);
+    }
+    return byId;
+  }, [paymentSourceByName]);
+
+  const paymentSourceOptions = useMemo(
+    () => [PAYMENT_SOURCE_NONE, ...paymentSourceNames],
+    [paymentSourceNames],
+  );
+
   const columnDefs = useMemo<ColDef<BudgetGridRow>[]>(
     () => [
       {
@@ -268,7 +386,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         colId: "accountPaymentDay",
         field: "accountPaymentDay",
         headerName: "Payment day",
-        editable: true,
+        editable: editableUnlessPinned(),
         minWidth: 110,
         filter: "agNumberColumnFilter",
         cellClass: "ag-cell-center",
@@ -280,7 +398,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         colId: "amount",
         field: "amount",
         headerName: "Budgeted",
-        editable: true,
+        editable: editableUnlessPinned(),
         minWidth: 120,
         ...currencyCol,
       },
@@ -288,14 +406,14 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         colId: "paymentMade",
         field: "paymentMade",
         headerName: "Paid",
-        editable: true,
+        editable: editableUnlessPinned(),
         minWidth: 120,
         ...currencyCol,
       },
       {
         colId: "budgetPaymentStatusName",
         headerName: "Status",
-        editable: true,
+        editable: editableUnlessPinned(),
         filter: "agTextColumnFilter",
         minWidth: 130,
         cellClass: "ag-cell-category",
@@ -318,7 +436,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         colId: "isCleared",
         field: "isCleared",
         headerName: "Cleared",
-        editable: true,
+        editable: editableUnlessPinned(),
         cellEditor: "agCheckboxCellEditor",
         filter: true,
         width: 110,
@@ -328,7 +446,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         colId: "paymentDate",
         field: "paymentDate",
         headerName: "Payment date",
-        editable: true,
+        editable: editableUnlessPinned(),
         filter: "agDateColumnFilter",
         minWidth: 130,
         valueFormatter: (p) => formatDateForGrid(p.value ?? null),
@@ -339,7 +457,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         colId: "clearedDate",
         field: "clearedDate",
         headerName: "Cleared date",
-        editable: true,
+        editable: editableUnlessPinned(),
         filter: "agDateColumnFilter",
         minWidth: 130,
         valueFormatter: (p) => formatDateForGrid(p.value ?? null),
@@ -377,16 +495,100 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       },
       {
         colId: "paymentSourceId",
-        field: "paymentSourceId",
         headerName: "Payment source",
-        editable: true,
-        filter: "agNumberColumnFilter",
-        minWidth: 120,
-        valueParser: (p: ValueParserParams) =>
-          parseOptionalNumber(p.newValue),
+        editable: editableUnlessPinned(),
+        filter: "agTextColumnFilter",
+        minWidth: 160,
+        cellClass: "ag-cell-category",
+        valueGetter: (params: ValueGetterParams<BudgetGridRow>) => {
+          if (!params.data?.paymentSourceId) return PAYMENT_SOURCE_NONE;
+          return (
+            paymentSourceNameById.get(params.data.paymentSourceId) ??
+            String(params.data.paymentSourceId)
+          );
+        },
+        valueSetter: (params: ValueSetterParams<BudgetGridRow>) => {
+          if (!params.data) return false;
+
+          if (paymentSourceNames.length === 0) {
+            params.data.paymentSourceId = parseOptionalNumber(params.newValue);
+            return true;
+          }
+
+          const selected = String(params.newValue);
+          if (selected === PAYMENT_SOURCE_NONE) {
+            params.data.paymentSourceId = null;
+            return true;
+          }
+
+          const id = paymentSourceByName.get(selected);
+          if (id === undefined) return false;
+          params.data.paymentSourceId = id;
+          return true;
+        },
+        ...(paymentSourceNames.length > 0
+          ? {
+              cellEditor: "agSelectCellEditor" as const,
+              cellEditorParams: {
+                values: paymentSourceOptions,
+              },
+            }
+          : {
+              valueParser: (p: ValueParserParams) =>
+                parseOptionalNumber(p.newValue),
+            }),
+        filterValueGetter: (params: ValueGetterParams<BudgetGridRow>) => {
+          if (!params.data?.paymentSourceId) return PAYMENT_SOURCE_NONE;
+          return (
+            paymentSourceNameById.get(params.data.paymentSourceId) ??
+            String(params.data.paymentSourceId)
+          );
+        },
+      },
+      {
+        colId: "actions",
+        headerName: "",
+        pinned: "right",
+        width: 96,
+        sortable: false,
+        filter: false,
+        floatingFilter: false,
+        editable: false,
+        suppressHeaderMenuButton: true,
+        cellClass: "ag-cell-center",
+        cellRenderer: (
+          params: ICellRendererParams<BudgetGridRow, unknown, BudgetGridContext>,
+        ) => {
+          if (!params.data) return null;
+          const canRemove = (params.context?.rowCount ?? 0) > 1;
+          const mutating = params.context?.accountMutating ?? false;
+
+          return (
+            <button
+              type="button"
+              disabled={!canRemove || mutating}
+              onClick={() =>
+                void params.context?.onRemoveAccount(
+                  params.data!.accountId,
+                  params.data!.accountName,
+                )
+              }
+              className="rounded-full border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Remove
+            </button>
+          );
+        },
       },
     ],
-    [statusNames, statusByName],
+    [
+      statusNames,
+      statusByName,
+      paymentSourceNames,
+      paymentSourceByName,
+      paymentSourceNameById,
+      paymentSourceOptions,
+    ],
   );
 
   const defaultColDef = useMemo<ColDef>(
@@ -403,8 +605,19 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
     [],
   );
 
+  const refreshPinnedTotals = useCallback((api?: GridApi | null) => {
+    const targetApi = api ?? gridRef.current?.api;
+    if (!targetApi) return;
+    setPinnedBottomRowData(
+      recalculatePinnedBottomRowData(targetApi, BUDGET_PINNED_TOTALS),
+    );
+  }, []);
+
   const getRowClass = useCallback(
     (params: RowClassParams<BudgetGridRow>) => {
+      if (isPinnedTotalRow(params.node)) {
+        return "account-grid-total-row";
+      }
       if (!params.data) return "";
 
       if (dirtyIds.current.has(params.data.budgetPaymentId)) {
@@ -435,8 +648,9 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       );
       setSummaryTick((tick) => tick + 1);
       event.api.redrawRows({ rowNodes: [event.node] });
+      refreshPinnedTotals(event.api);
     },
-    [],
+    [refreshPinnedTotals],
   );
 
   const handleSave = async () => {
@@ -524,6 +738,10 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
     [],
   );
 
+  useEffect(() => {
+    refreshPinnedTotals();
+  }, [rowData, summaryTick, refreshPinnedTotals]);
+
   const onGridReady = (event: GridReadyEvent) => {
     setGridApi(event.api);
 
@@ -534,6 +752,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
     }
 
     columnStateReadyRef.current = true;
+    refreshPinnedTotals(event.api);
   };
 
   return (
@@ -606,6 +825,18 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
           </div>
 
           <div className="account-grid-toolbar-actions">
+            <button
+              type="button"
+              onClick={() => {
+                if (!ensureAccountMutationAllowed()) return;
+                setAddAccountOpen(true);
+              }}
+              disabled={loading || saving || accountMutating}
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Plus size={15} aria-hidden />
+              Add account
+            </button>
             <BudgetColumnPicker gridApi={gridApi} />
             <button
               type="button"
@@ -649,11 +880,14 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
             ref={gridRef}
             theme={accountGridTheme}
             rowData={rowData}
+            pinnedBottomRowData={pinnedBottomRowData}
             columnDefs={columnDefs}
             defaultColDef={defaultColDef}
+            context={gridContext}
             getRowClass={getRowClass}
             onCellValueChanged={onCellValueChanged}
             onGridReady={onGridReady}
+            onFilterChanged={() => refreshPinnedTotals()}
             onColumnVisible={scheduleColumnStateSave}
             onColumnMoved={scheduleColumnStateSave}
             onColumnResized={scheduleColumnStateSave}
@@ -681,6 +915,22 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         Double-click to edit · Column layout is saved in this browser · Save when
         done
       </p>
+
+      {addAccountOpen ? (
+        <AddBudgetAccountDialog
+          budgetId={budgetId}
+          accounts={allAccounts}
+          includedAccountIds={includedAccountIds}
+          onClose={() => setAddAccountOpen(false)}
+          onAdded={(accountName) => {
+            setStatus({
+              type: "success",
+              message: `Added ${accountName} to the budget.`,
+            });
+            void loadData();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

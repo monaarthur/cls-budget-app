@@ -16,6 +16,7 @@ public static class LookupDataSeed
         modelBuilder.Entity<AccountCategory>().HasData(GetAccountCategories());
         modelBuilder.Entity<BudgetTemplate>().HasData(GetBudgetTemplates());
         modelBuilder.Entity<BudgetPaymentStatus>().HasData(GetBudgetPaymentStatuses());
+        modelBuilder.Entity<PaymentSource>().HasData(GetPaymentSources());
     }
 
     public static IEnumerable<AccountCategory> GetAccountCategories() =>
@@ -82,5 +83,27 @@ public static class LookupDataSeed
         new BudgetPaymentStatus { BudgetPaymentStatusId = 3, Name = "Paid", Description = "Payment completed" },
         new BudgetPaymentStatus { BudgetPaymentStatusId = 4, Name = "Failed", Description = "Payment attempt failed" },
         new BudgetPaymentStatus { BudgetPaymentStatusId = 5, Name = "Overdue", Description = "Past due and not paid" }
+    ];
+
+    public static IEnumerable<PaymentSource> GetPaymentSources() =>
+    [
+        new PaymentSource
+        {
+            PaymentSourceId = 1,
+            Name = "HVCU",
+            Description = "Hudson Valley Credit Union checking"
+        },
+        new PaymentSource
+        {
+            PaymentSourceId = 2,
+            Name = "HVCU CC",
+            Description = "HVCU credit card used for payments"
+        },
+        new PaymentSource
+        {
+            PaymentSourceId = 3,
+            Name = "AE",
+            Description = "Alternate / American Express funding account"
+        }
     ];
 }

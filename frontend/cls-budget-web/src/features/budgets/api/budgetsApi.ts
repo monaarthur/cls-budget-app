@@ -17,5 +17,12 @@ export const budgetsApi = {
     apiPost<BudgetResponse, CopyBudgetRequest>(`${basePath}/${id}/copy`, body),
   update: (id: number, body: UpdateBudgetRequest) =>
     apiPut<BudgetResponse, UpdateBudgetRequest>(`${basePath}/${id}`, body),
+  addAccount: (budgetId: number, accountId: number) =>
+    apiPost<BudgetResponse, Record<string, never>>(
+      `${basePath}/${budgetId}/accounts/${accountId}`,
+      {},
+    ),
+  removeAccount: (budgetId: number, accountId: number) =>
+    apiDelete<BudgetResponse>(`${basePath}/${budgetId}/accounts/${accountId}`),
   remove: (id: number) => apiDelete<null>(`${basePath}/${id}`),
 };

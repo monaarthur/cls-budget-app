@@ -255,6 +255,17 @@
   background-color: #fef08a !important;
 }
 
+.account-grid-viewport .account-grid-total-row {
+  background-color: #eef2f7 !important;
+  border-top: 2px solid #cbd5e1 !important;
+  font-weight: 600;
+}
+
+.account-grid-viewport .account-grid-total-row .ag-cell {
+  font-weight: 600;
+  color: #0f2744;
+}
+
 /* Budget grid — payment status row colors */
 .account-grid-viewport .budget-row-pending {
   background-color: #fef2f2 !important;

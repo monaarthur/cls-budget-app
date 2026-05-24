@@ -6,7 +6,7 @@ import {
 
 const STORAGE_KEY = "cls-budget.accounts-grid.column-state";
 const STORAGE_VERSION_KEY = "cls-budget.accounts-grid.column-state-version";
-const STORAGE_VERSION = 1;
+const STORAGE_VERSION = 2;
 
 const validColIds = new Set<string>(GRID_COLUMNS.map((column) => column.colId));
 
