@@ -21,7 +21,6 @@ import { accountsApi } from "@/features/accounts/api/accountsApi";
 import {
   getAccountCategoryName,
   compareAccountCategoryIds,
-  sortRowsByCategory,
 } from "@/features/accounts/data/accountCategories";
 import {
   formatDateForGrid,
@@ -39,6 +38,7 @@ import {
 } from "@/features/accounts/components/gridPinnedTotals";
 import { BudgetColumnPicker } from "@/features/budgets/components/BudgetColumnPicker";
 import { AddBudgetAccountDialog } from "@/features/budgets/components/AddBudgetAccountDialog";
+import { AddBudgetPaymentDialog } from "@/features/budgets/components/AddBudgetPaymentDialog";
 import { BUDGET_DEFAULT_HIDDEN_COLUMNS } from "@/features/budgets/components/budgetGridColumns";
 import {
   restoreBudgetColumnState,
@@ -53,10 +53,12 @@ import {
 import {
   buildBudgetGridRows,
   getBudgetStatusRowClass,
+  isFirstPaymentRowForAccount,
   toUpdatePaymentRequest,
   type BudgetGridRow,
 } from "@/features/budgets/utils/budgetGridMapper";
 import { paymentsApi } from "@/features/payments/api/paymentsApi";
+import type { BudgetPaymentStatusResponse } from "@/features/payments/types/payment";
 import { paymentSourcesApi } from "@/features/payments/api/paymentSourcesApi";
 import { ApiError } from "@/lib/api/client";
 import { formatCurrency, formatCurrencyDetailed } from "@/lib/format";
@@ -104,9 +106,13 @@ const BUDGET_PINNED_TOTALS: PinnedTotalsConfig = {
 };
 
 interface BudgetGridContext {
-  rowCount: number;
+  rowData: BudgetGridRow[];
+  budgetAccountCount: number;
   accountMutating: boolean;
+  paymentMutating: boolean;
   onRemoveAccount: (accountId: number, accountName: string) => void;
+  onDeletePayment: (budgetPaymentId: number) => void;
+  onAddPaymentForAccount: (accountId: number) => void;
 }
 
 function PaymentHalfPanel({
@@ -162,9 +168,18 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   const [paymentSourceByName, setPaymentSourceByName] = useState<
     Map<string, number>
   >(new Map());
+  const [budgetAccountIds, setBudgetAccountIds] = useState<number[]>([]);
+  const [paymentStatuses, setPaymentStatuses] = useState<
+    BudgetPaymentStatusResponse[]
+  >([]);
   const [allAccounts, setAllAccounts] = useState<AccountResponse[]>([]);
   const [addAccountOpen, setAddAccountOpen] = useState(false);
+  const [addPaymentOpen, setAddPaymentOpen] = useState(false);
+  const [addPaymentAccountId, setAddPaymentAccountId] = useState<
+    number | undefined
+  >(undefined);
   const [accountMutating, setAccountMutating] = useState(false);
+  const [paymentMutating, setPaymentMutating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
@@ -215,6 +230,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       );
 
       const statuses = statusesResult.data ?? [];
+      setPaymentStatuses(statuses);
       setStatusNames(statuses.map((s) => s.name));
       setStatusByName(
         new Map(statuses.map((s) => [s.name, s.budgetPaymentStatusId])),
@@ -228,15 +244,11 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
 
       setBudgetName(budget.name);
       setBudgetStartPeriod(budget.startPeriod);
+      setBudgetAccountIds(budget.accountIds ?? []);
       setBudgetPeriod(
         formatBudgetPeriod(budget.startPeriod, budget.endPeriod),
       );
-      setRowData(
-        sortRowsByCategory(
-          buildBudgetGridRows(payments, accountsById),
-          (row) => row.accountName,
-        ),
-      );
+      setRowData(buildBudgetGridRows(payments, accountsById));
       dirtyIds.current.clear();
       dirtyAccountIds.current.clear();
       setPendingCount(0);
@@ -271,8 +283,17 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   }, [rowData, summaryTick, budgetStartPeriod]);
 
   const includedAccountIds = useMemo(
-    () => new Set(rowData.map((row) => row.accountId)),
-    [rowData],
+    () => new Set(budgetAccountIds),
+    [budgetAccountIds],
+  );
+
+  const budgetAccounts = useMemo(
+    () =>
+      budgetAccountIds
+        .map((accountId) => accountsByIdRef.current.get(accountId))
+        .filter((account): account is AccountResponse => account != null)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [budgetAccountIds, rowData],
   );
 
   const ensureAccountMutationAllowed = useCallback(() => {
@@ -290,7 +311,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   const handleRemoveAccount = useCallback(
     async (accountId: number, accountName: string) => {
       if (!ensureAccountMutationAllowed()) return;
-      if (rowData.length <= 1) return;
+      if (budgetAccountIds.length <= 1) return;
       if (
         !window.confirm(`Remove "${accountName}" from this budget?`)
       ) {
@@ -318,16 +339,94 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         setAccountMutating(false);
       }
     },
-    [budgetId, ensureAccountMutationAllowed, loadData, rowData.length],
+    [budgetId, budgetAccountIds.length, ensureAccountMutationAllowed, loadData],
+  );
+
+  const handleDeletePayment = useCallback(
+    async (budgetPaymentId: number) => {
+      if (!ensureAccountMutationAllowed()) return;
+
+      const payment = rowData.find(
+        (row) => row.budgetPaymentId === budgetPaymentId,
+      );
+      if (!payment) return;
+
+      const accountPaymentCount = rowData.filter(
+        (row) => row.accountId === payment.accountId,
+      ).length;
+      if (accountPaymentCount <= 1 && budgetAccountIds.length <= 1) {
+        setStatus({
+          type: "error",
+          message:
+            "Cannot delete the only payment when this is the only account in the budget.",
+        });
+        return;
+      }
+
+      const confirmMessage =
+        accountPaymentCount <= 1
+          ? `Delete the only payment for "${payment.accountName}"? The account will remain in this budget with no payments until you add one.`
+          : `Delete this payment for "${payment.accountName}" on ${formatDateForGrid(payment.paymentDate)}?`;
+
+      if (!window.confirm(confirmMessage)) return;
+
+      setPaymentMutating(true);
+      setStatus(null);
+      try {
+        await paymentsApi.remove(budgetPaymentId);
+        setStatus({
+          type: "success",
+          message: `Deleted payment for ${payment.accountName}.`,
+        });
+        await loadData();
+      } catch (err) {
+        const message =
+          err instanceof ApiError
+            ? err.errors.join(", ") || err.message
+            : err instanceof Error
+              ? err.message
+              : "Failed to delete payment";
+        setStatus({ type: "error", message });
+      } finally {
+        setPaymentMutating(false);
+      }
+    },
+    [
+      budgetAccountIds.length,
+      ensureAccountMutationAllowed,
+      loadData,
+      rowData,
+    ],
+  );
+
+  const handleAddPaymentForAccount = useCallback(
+    (accountId: number) => {
+      if (!ensureAccountMutationAllowed()) return;
+      setAddPaymentAccountId(accountId);
+      setAddPaymentOpen(true);
+    },
+    [ensureAccountMutationAllowed],
   );
 
   const gridContext = useMemo<BudgetGridContext>(
     () => ({
-      rowCount: rowData.length,
+      rowData,
+      budgetAccountCount: budgetAccountIds.length,
       accountMutating,
+      paymentMutating,
       onRemoveAccount: handleRemoveAccount,
+      onDeletePayment: handleDeletePayment,
+      onAddPaymentForAccount: handleAddPaymentForAccount,
     }),
-    [accountMutating, handleRemoveAccount, rowData.length],
+    [
+      accountMutating,
+      budgetAccountIds.length,
+      handleAddPaymentForAccount,
+      handleDeletePayment,
+      handleRemoveAccount,
+      paymentMutating,
+      rowData,
+    ],
   );
 
   const paymentSourceNameById = useMemo(() => {
@@ -549,7 +648,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         colId: "actions",
         headerName: "",
         pinned: "right",
-        width: 96,
+        width: 168,
         sortable: false,
         filter: false,
         floatingFilter: false,
@@ -560,23 +659,60 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
           params: ICellRendererParams<BudgetGridRow, unknown, BudgetGridContext>,
         ) => {
           if (!params.data) return null;
-          const canRemove = (params.context?.rowCount ?? 0) > 1;
-          const mutating = params.context?.accountMutating ?? false;
+          const rows = params.context?.rowData ?? [];
+          const canRemoveAccount =
+            (params.context?.budgetAccountCount ?? 0) > 1;
+          const showRemoveAccount = isFirstPaymentRowForAccount(
+            params.data,
+            rows,
+          );
+          const mutating =
+            (params.context?.accountMutating ?? false) ||
+            (params.context?.paymentMutating ?? false);
 
           return (
-            <button
-              type="button"
-              disabled={!canRemove || mutating}
-              onClick={() =>
-                void params.context?.onRemoveAccount(
-                  params.data!.accountId,
-                  params.data!.accountName,
-                )
-              }
-              className="rounded-full border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Remove
-            </button>
+            <div className="flex items-center justify-center gap-1">
+              <button
+                type="button"
+                disabled={mutating}
+                onClick={() =>
+                  params.context?.onAddPaymentForAccount(params.data!.accountId)
+                }
+                className="rounded-full border border-[var(--border)] px-2 py-1 text-xs font-medium hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-40"
+                title="Add another payment for this account"
+              >
+                Add
+              </button>
+              <button
+                type="button"
+                disabled={mutating}
+                onClick={() =>
+                  void params.context?.onDeletePayment(
+                    params.data!.budgetPaymentId,
+                  )
+                }
+                className="rounded-full border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                title="Delete this payment"
+              >
+                Delete
+              </button>
+              {showRemoveAccount ? (
+                <button
+                  type="button"
+                  disabled={!canRemoveAccount || mutating}
+                  onClick={() =>
+                    void params.context?.onRemoveAccount(
+                      params.data!.accountId,
+                      params.data!.accountName,
+                    )
+                  }
+                  className="rounded-full border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  title="Remove account from budget"
+                >
+                  Remove
+                </button>
+              ) : null}
+            </div>
           );
         },
       },
@@ -829,9 +965,24 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
               type="button"
               onClick={() => {
                 if (!ensureAccountMutationAllowed()) return;
+                setAddPaymentAccountId(undefined);
+                setAddPaymentOpen(true);
+              }}
+              disabled={
+                loading || saving || accountMutating || paymentMutating
+              }
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Plus size={15} aria-hidden />
+              Add payment
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!ensureAccountMutationAllowed()) return;
                 setAddAccountOpen(true);
               }}
-              disabled={loading || saving || accountMutating}
+              disabled={loading || saving || accountMutating || paymentMutating}
               className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Plus size={15} aria-hidden />
@@ -915,6 +1066,27 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         Double-click to edit · Column layout is saved in this browser · Save when
         done
       </p>
+
+      {addPaymentOpen ? (
+        <AddBudgetPaymentDialog
+          budgetId={budgetId}
+          budgetStartPeriod={budgetStartPeriod}
+          accounts={budgetAccounts}
+          statuses={paymentStatuses}
+          initialAccountId={addPaymentAccountId}
+          onClose={() => {
+            setAddPaymentOpen(false);
+            setAddPaymentAccountId(undefined);
+          }}
+          onAdded={(accountName) => {
+            setStatus({
+              type: "success",
+              message: `Added payment for ${accountName}.`,
+            });
+            void loadData();
+          }}
+        />
+      ) : null}
 
       {addAccountOpen ? (
         <AddBudgetAccountDialog

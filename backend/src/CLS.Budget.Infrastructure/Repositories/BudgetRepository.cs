@@ -155,14 +155,13 @@ public sealed class BudgetRepository(BudgetDbContext dbContext) : IBudgetReposit
     {
         dbContext.Budgets.Update(budget);
 
-        var payment = await dbContext.BudgetPayments
-            .FirstOrDefaultAsync(
-                p => p.BudgetId == budget.BudgetId && p.AccountId == accountId,
-                cancellationToken);
+        var payments = await dbContext.BudgetPayments
+            .Where(p => p.BudgetId == budget.BudgetId && p.AccountId == accountId)
+            .ToListAsync(cancellationToken);
 
-        if (payment is not null)
+        if (payments.Count > 0)
         {
-            dbContext.BudgetPayments.Remove(payment);
+            dbContext.BudgetPayments.RemoveRange(payments);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);

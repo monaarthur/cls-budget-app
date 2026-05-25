@@ -1,5 +1,6 @@
 using CLS.Budget.Application.Abstractions.Repositories;
 using CLS.Budget.Application.Abstractions.Services;
+using CLS.Budget.Application.Budgets;
 using CLS.Budget.Application.Common;
 using CLS.Budget.Application.Payments.Dtos;
 
@@ -7,7 +8,8 @@ namespace CLS.Budget.Application.Payments;
 
 public sealed class PaymentService(
     IPaymentRepository paymentRepository,
-    IBudgetPaymentStatusRepository budgetPaymentStatusRepository) : IPaymentService
+    IBudgetPaymentStatusRepository budgetPaymentStatusRepository,
+    IBudgetRepository budgetRepository) : IPaymentService
 {
     public async Task<ApiResponse<IReadOnlyList<PaymentResponse>>> GetAllAsync(
         CancellationToken cancellationToken = default)
@@ -38,6 +40,15 @@ public sealed class PaymentService(
         if (statusError is not null)
         {
             return ApiResponse<PaymentResponse>.Fail(statusError);
+        }
+
+        var budgetError = await ValidateAccountInBudgetAsync(
+            request.BudgetId,
+            request.AccountId,
+            cancellationToken);
+        if (budgetError is not null)
+        {
+            return ApiResponse<PaymentResponse>.Fail(budgetError);
         }
 
         var payment = PaymentMapper.ToEntity(request);
@@ -93,5 +104,25 @@ public sealed class PaymentService(
 
         var exists = await budgetPaymentStatusRepository.ExistsAsync(budgetPaymentStatusId, cancellationToken);
         return exists ? null : $"Budget payment status with id {budgetPaymentStatusId} was not found.";
+    }
+
+    private async Task<string?> ValidateAccountInBudgetAsync(
+        int budgetId,
+        int accountId,
+        CancellationToken cancellationToken)
+    {
+        var budget = await budgetRepository.GetByIdAsync(budgetId, cancellationToken);
+        if (budget is null)
+        {
+            return $"Budget with id {budgetId} was not found.";
+        }
+
+        var accountIds = BudgetTemplateAccountIdsParser.Parse(budget.AccountIds);
+        if (!accountIds.Contains(accountId))
+        {
+            return $"Account with id {accountId} is not included in budget {budgetId}.";
+        }
+
+        return null;
     }
 }
