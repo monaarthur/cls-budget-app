@@ -12,7 +12,9 @@ internal static class BudgetMapper
         StartPeriod = budget.StartPeriod,
         EndPeriod = budget.EndPeriod,
         BudgetTemplateId = budget.BudgetTemplateId,
-        AccountIds = BudgetTemplateAccountIdsParser.Parse(budget.AccountIds)
+        Notes = budget.Notes,
+        AccountIds = BudgetTemplateAccountIdsParser.Parse(budget.AccountIds),
+        PayScheduleId = budget.PayScheduleId
     };
 
     public static BudgetModel ToEntity(CreateBudgetRequest request) => new()
@@ -20,7 +22,9 @@ internal static class BudgetMapper
         Name = request.Name,
         StartPeriod = request.StartPeriod,
         EndPeriod = request.EndPeriod,
-        BudgetTemplateId = request.BudgetTemplateId
+        BudgetTemplateId = request.BudgetTemplateId,
+        Notes = request.Notes,
+        PayScheduleId = request.PayScheduleId
     };
 
     public static BudgetModel ToCopiedEntity(BudgetModel source, CopyBudgetRequest request, int budgetTemplateId) => new()
@@ -29,7 +33,9 @@ internal static class BudgetMapper
         StartPeriod = request.StartPeriod,
         EndPeriod = request.EndPeriod,
         BudgetTemplateId = budgetTemplateId,
-        AccountIds = source.AccountIds
+        Notes = source.Notes,
+        AccountIds = source.AccountIds,
+        PayScheduleId = source.PayScheduleId
     };
 
     public static void ApplyUpdate(BudgetModel budget, UpdateBudgetRequest request)
@@ -38,5 +44,7 @@ internal static class BudgetMapper
         budget.StartPeriod = request.StartPeriod;
         budget.EndPeriod = request.EndPeriod;
         budget.BudgetTemplateId = request.BudgetTemplateId;
+        budget.Notes = request.Notes;
+        budget.PayScheduleId = request.PayScheduleId;
     }
 }

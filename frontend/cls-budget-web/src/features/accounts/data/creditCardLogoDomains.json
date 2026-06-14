@@ -1,0 +1,17 @@
+[
+  { "match": "amazon", "domain": "amazon.com" },
+  { "match": "american express", "domain": "americanexpress.com" },
+  { "match": "amex", "domain": "americanexpress.com" },
+  { "match": "chase hyatt", "domain": "chase.com" },
+  { "match": "chase", "domain": "chase.com" },
+  { "match": "citibank", "domain": "citi.com" },
+  { "match": "capital one", "domain": "capitalone.com" },
+  { "match": "discover", "domain": "discover.com" },
+  { "match": "macys", "domain": "macys.com" },
+  { "match": "macy", "domain": "macys.com" },
+  { "match": "credit one", "domain": "creditonebank.com" },
+  { "match": "hvcu", "domain": "hvcu.org" },
+  { "match": "spririt", "domain": "bankofamerica.com" },
+  { "match": "spirit", "domain": "bankofamerica.com" },
+  { "match": "wayfair", "domain": "wayfair.com" }
+]

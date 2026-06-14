@@ -1,6 +1,11 @@
 import { compareAccountCategoryIds } from "@/features/accounts/data/accountCategories";
+import { isPaymentDateSelected } from "@/features/budgets/utils/budgetPaymentSummary";
 import type { AccountResponse } from "@/features/accounts/types/account";
 import type { PaymentResponse, UpdatePaymentRequest } from "@/features/payments/types/payment";
+import {
+  getPaymentTiming,
+  getPaymentTimingRowClass,
+} from "@/features/payments/utils/paymentTiming";
 
 export interface BudgetGridRow extends PaymentResponse {
   accountName: string;
@@ -33,9 +38,15 @@ export function buildBudgetGridRows(
 
 export function sortBudgetPaymentRows(rows: BudgetGridRow[]): BudgetGridRow[] {
   return [...rows].sort((a, b) => {
-    const dateA = new Date(a.paymentDate).getTime();
-    const dateB = new Date(b.paymentDate).getTime();
-    if (dateA !== dateB) return dateA - dateB;
+    const aHasDate = isPaymentDateSelected(a.paymentDate);
+    const bHasDate = isPaymentDateSelected(b.paymentDate);
+    if (aHasDate !== bHasDate) return aHasDate ? -1 : 1;
+
+    if (aHasDate && bHasDate) {
+      const dateA = new Date(a.paymentDate!).getTime();
+      const dateB = new Date(b.paymentDate!).getTime();
+      if (dateA !== dateB) return dateA - dateB;
+    }
 
     const categoryCompare = compareAccountCategoryIds(
       a.accountCategoryId,
@@ -71,10 +82,16 @@ export function isFirstPaymentRowForAccount(
   for (const candidate of rows) {
     if (candidate.accountId !== row.accountId) continue;
 
+    const candidateTime = candidate.paymentDate
+      ? new Date(candidate.paymentDate).getTime()
+      : Number.POSITIVE_INFINITY;
+    const earliestTime = earliest?.paymentDate
+      ? new Date(earliest.paymentDate).getTime()
+      : Number.POSITIVE_INFINITY;
+
     if (
       !earliest ||
-      new Date(candidate.paymentDate).getTime() <
-        new Date(earliest.paymentDate).getTime() ||
+      candidateTime < earliestTime ||
       (candidate.paymentDate === earliest.paymentDate &&
         candidate.budgetPaymentId < earliest.budgetPaymentId)
     ) {
@@ -83,6 +100,20 @@ export function isFirstPaymentRowForAccount(
   }
 
   return earliest?.budgetPaymentId === row.budgetPaymentId;
+}
+
+export function calculateOwed(
+  amount: number | null | undefined,
+  paymentMade: number | null | undefined,
+): number {
+  return (Number(amount) || 0) - (Number(paymentMade) || 0);
+}
+
+export function needsPaymentSourceUpdate(
+  row: Pick<BudgetGridRow, "paymentMade" | "paymentSourceId"> | null | undefined,
+): boolean {
+  if (!row) return false;
+  return row.paymentMade > 0 && row.paymentSourceId == null;
 }
 
 export function toUpdatePaymentRequest(row: BudgetGridRow): UpdatePaymentRequest {
@@ -96,7 +127,14 @@ export function toUpdatePaymentRequest(row: BudgetGridRow): UpdatePaymentRequest
     paymentDate: row.paymentDate,
     clearedDate: row.clearedDate,
     paymentSourceId: row.paymentSourceId,
+    incomeSourceId: row.incomeSourceId ?? null,
   };
+}
+
+export function getBudgetPaymentRowClass(row: BudgetGridRow): string {
+  const timingClass = getPaymentTimingRowClass(getPaymentTiming(row));
+  if (timingClass) return timingClass;
+  return getBudgetStatusRowClass(row.budgetPaymentStatusName);
 }
 
 export function getBudgetStatusRowClass(statusName: string): string {

@@ -1,5 +1,17 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Environment
+
+Copy `.env.example` to `.env.local` and adjust as needed:
+
+```bash
+cp .env.example .env.local
+```
+
+## Authentication
+
+Login is optional in local development. To enable or disable auth on the frontend and backend (including JWT settings and dev auto-login), see **[docs/AUTH.md](../../docs/AUTH.md)** at the repo root.
+
 ## Getting Started
 
 First, run the development server:

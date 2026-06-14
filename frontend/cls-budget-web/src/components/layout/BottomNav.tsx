@@ -3,15 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Banknote,
   CreditCard,
   Home,
   LayoutGrid,
   Wallet,
+  WalletCards,
 } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Overview", icon: Home },
   { href: "/accounts", label: "Accounts", icon: Wallet },
+  { href: "/credit-cards", label: "Cards", icon: WalletCards },
+  { href: "/income", label: "Income", icon: Banknote },
   { href: "/payments", label: "Payments", icon: CreditCard },
   { href: "/budgets", label: "Budgets", icon: LayoutGrid },
 ] as const;

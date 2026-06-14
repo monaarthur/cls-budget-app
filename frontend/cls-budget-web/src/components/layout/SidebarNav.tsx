@@ -3,15 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Banknote,
   CreditCard,
   Home,
   LayoutGrid,
   Wallet,
+  WalletCards,
 } from "lucide-react";
+import { UserMenu } from "@/features/auth/components/UserMenu";
 
 const navItems = [
   { href: "/", label: "Overview", icon: Home },
   { href: "/accounts", label: "Accounts", icon: Wallet },
+  { href: "/credit-cards", label: "Credit cards", icon: WalletCards },
+  { href: "/income", label: "Income", icon: Banknote },
   { href: "/payments", label: "Payments", icon: CreditCard },
   { href: "/budgets", label: "Budgets", icon: LayoutGrid },
 ] as const;
@@ -20,7 +25,7 @@ export function SidebarNav() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden w-56 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--card)] px-3 py-6 lg:flex">
+    <aside className="hidden w-56 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--card)] px-3 py-6 lg:flex lg:min-h-screen">
       <Link href="/" className="px-3 text-lg font-bold tracking-tight">
         CLS<span className="text-[var(--link)]">Budget</span>
       </Link>
@@ -44,6 +49,7 @@ export function SidebarNav() {
           );
         })}
       </nav>
+      <UserMenu />
     </aside>
   );
 }

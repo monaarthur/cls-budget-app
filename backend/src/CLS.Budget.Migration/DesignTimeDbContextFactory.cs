@@ -1,4 +1,5 @@
 using CLS.Budget.Infrastructure.Persistance;
+using CLS.Budget.Infrastructure.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
@@ -24,6 +25,6 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<BudgetDbCo
         optionsBuilder.UseNpgsql(connectionString, npgsql =>
             npgsql.MigrationsAssembly("CLS.Budget.Migration"));
 
-        return new BudgetDbContext(optionsBuilder.Options);
+        return new BudgetDbContext(optionsBuilder.Options, new DefaultTenantContext());
     }
 }

@@ -12,15 +12,14 @@ namespace CLS.Budget.EfCore.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.InsertData(
-                table: "PaymentSource",
-                columns: new[] { "PaymentSourceId", "Description", "Name" },
-                values: new object[,]
-                {
-                    { 1, "Hudson Valley Credit Union checking", "HVCU" },
-                    { 2, "HVCU credit card used for payments", "HVCU CC" },
-                    { 3, "Alternate / American Express funding account", "AE" }
-                });
+            migrationBuilder.Sql("""
+                INSERT INTO "PaymentSource" ("PaymentSourceId", "Description", "Name")
+                VALUES
+                    (1, 'Hudson Valley Credit Union checking', 'HVCU'),
+                    (2, 'HVCU credit card used for payments', 'HVCU CC'),
+                    (3, 'Alternate / American Express funding account', 'AE')
+                ON CONFLICT ("PaymentSourceId") DO NOTHING;
+                """);
         }
 
         /// <inheritdoc />

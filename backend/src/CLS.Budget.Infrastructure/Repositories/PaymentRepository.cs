@@ -8,7 +8,9 @@ namespace CLS.Budget.Infrastructure.Repositories;
 public sealed class PaymentRepository(BudgetDbContext dbContext) : IPaymentRepository
 {
     private IQueryable<BudgetPayment> PaymentsWithStatus =>
-        dbContext.BudgetPayments.Include(p => p.BudgetPaymentStatus);
+        dbContext.BudgetPayments
+            .Include(p => p.BudgetPaymentStatus)
+            .Include(p => p.IncomeSource);
 
     public async Task<IReadOnlyList<BudgetPayment>> GetAllAsync(CancellationToken cancellationToken = default) =>
         await PaymentsWithStatus

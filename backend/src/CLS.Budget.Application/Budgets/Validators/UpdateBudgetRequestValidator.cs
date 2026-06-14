@@ -10,5 +10,6 @@ public sealed class UpdateBudgetRequestValidator : AbstractValidator<UpdateBudge
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
         RuleFor(x => x.BudgetTemplateId).GreaterThan(0);
         RuleFor(x => x.EndPeriod).GreaterThanOrEqualTo(x => x.StartPeriod);
+        RuleFor(x => x.Notes).MaximumLength(4000);
     }
 }

@@ -16,7 +16,7 @@ import {
   type ValueParserParams,
   type ValueSetterParams,
 } from "ag-grid-community";
-import { Plus, RefreshCw, RotateCcw, Save, Search } from "lucide-react";
+import { Plus, RefreshCw, RotateCcw, Save, Search, Settings2 } from "lucide-react";
 import { accountsApi } from "@/features/accounts/api/accountsApi";
 import {
   getAccountCategoryName,
@@ -25,9 +25,9 @@ import {
 import {
   formatDateForGrid,
   formatPaymentDay,
-  parseGridDate,
   toUpdateAccountRequest,
 } from "@/features/accounts/utils/accountMapper";
+import { createEditableDateColDef } from "@/features/accounts/components/gridDateColumn";
 import type { AccountResponse } from "@/features/accounts/types/account";
 import { accountGridTheme } from "@/features/accounts/components/accountGridTheme";
 import {
@@ -36,27 +36,43 @@ import {
   recalculatePinnedBottomRowData,
   type PinnedTotalsConfig,
 } from "@/features/accounts/components/gridPinnedTotals";
+import { GridActiveFilters } from "@/features/accounts/components/GridActiveFilters";
 import { BudgetColumnPicker } from "@/features/budgets/components/BudgetColumnPicker";
+import { BudgetNotesSection } from "@/features/budgets/components/BudgetNotesSection";
 import { AddBudgetAccountDialog } from "@/features/budgets/components/AddBudgetAccountDialog";
 import { AddBudgetPaymentDialog } from "@/features/budgets/components/AddBudgetPaymentDialog";
+import { AddIncomeDialog } from "@/features/incomes/components/AddIncomeDialog";
+import { AccountNameCellRenderer } from "@/features/budgets/components/AccountNameCellRenderer";
 import { BUDGET_DEFAULT_HIDDEN_COLUMNS } from "@/features/budgets/components/budgetGridColumns";
 import {
   restoreBudgetColumnState,
   saveBudgetColumnState,
 } from "@/features/budgets/components/budgetGridColumnState";
 import { budgetsApi } from "@/features/budgets/api/budgetsApi";
+import type { UpdateBudgetRequest } from "@/features/budgets/types/budget";
 import { formatBudgetPeriod } from "@/features/budgets/utils/budgetFormat";
+import { parseBudgetNotes, serializeBudgetNotes } from "@/features/budgets/utils/budgetNotes";
 import {
-  summarizePaymentsByHalfMonth,
+  summarizePaymentsByPayPeriod,
+  getPaymentHalfSummaryTotal,
+  type PaymentClearedSummary,
   type PaymentHalfSummary,
 } from "@/features/budgets/utils/budgetPaymentSummary";
+import { PayScheduleSettingsDialog } from "@/features/pay-schedules/components/PayScheduleSettingsDialog";
+import { paySchedulesApi } from "@/features/pay-schedules/api/paySchedulesApi";
+import { toScheduleConfig } from "@/features/pay-schedules/utils/payDateCalculator";
+import type { PayScheduleResponse } from "@/features/pay-schedules/types/paySchedule";
 import {
   buildBudgetGridRows,
-  getBudgetStatusRowClass,
+  calculateOwed,
+  getBudgetPaymentRowClass,
   isFirstPaymentRowForAccount,
   toUpdatePaymentRequest,
   type BudgetGridRow,
 } from "@/features/budgets/utils/budgetGridMapper";
+import { incomesApi } from "@/features/incomes/api/incomesApi";
+import { incomeSourcesApi } from "@/features/incomes/api/incomeSourcesApi";
+import type { IncomeSummaryResponse } from "@/features/incomes/types/income";
 import { paymentsApi } from "@/features/payments/api/paymentsApi";
 import type { BudgetPaymentStatusResponse } from "@/features/payments/types/payment";
 import { paymentSourcesApi } from "@/features/payments/api/paymentSourcesApi";
@@ -99,6 +115,7 @@ const currencyCol = {
 };
 
 const PAYMENT_SOURCE_NONE = "(None)";
+const INCOME_SOURCE_NONE = "(None)";
 
 const BUDGET_PINNED_TOTALS: PinnedTotalsConfig = {
   labelField: "accountName",
@@ -118,10 +135,14 @@ interface BudgetGridContext {
 function PaymentHalfPanel({
   title,
   summary,
+  cleared,
 }: {
   title: string;
   summary: PaymentHalfSummary;
+  cleared: PaymentClearedSummary;
 }) {
+  const total = getPaymentHalfSummaryTotal(summary);
+
   return (
     <div className="rounded-xl bg-white/10 p-4 backdrop-blur-sm">
       <p className="text-sm font-semibold text-white">{title}</p>
@@ -144,7 +165,25 @@ function PaymentHalfPanel({
             {formatCurrency(summary.scheduled)}
           </dd>
         </div>
+        <div className="flex items-center justify-between gap-4 border-t border-white/20 pt-2">
+          <dt className="font-semibold text-white">Total</dt>
+          <dd className="font-semibold tabular-nums text-white">
+            {formatCurrency(total)}
+          </dd>
+        </div>
       </dl>
+      <div className="mt-3 rounded-lg border border-emerald-300/35 bg-emerald-500/25 px-3 py-2.5">
+        <div className="flex items-center justify-between gap-4 text-sm">
+          <p className="font-semibold text-emerald-50">Cleared</p>
+          <p className="font-semibold tabular-nums text-white">
+            {formatCurrency(cleared.amount)}
+          </p>
+        </div>
+        <p className="mt-1 text-xs text-emerald-100/85">
+          {cleared.count} of {cleared.total}{" "}
+          {cleared.total === 1 ? "payment" : "payments"}
+        </p>
+      </div>
     </div>
   );
 }
@@ -160,6 +199,15 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   const [budgetName, setBudgetName] = useState("");
   const [budgetPeriod, setBudgetPeriod] = useState("");
   const [budgetStartPeriod, setBudgetStartPeriod] = useState("");
+  const [budgetEndPeriod, setBudgetEndPeriod] = useState("");
+  const [budgetTemplateId, setBudgetTemplateId] = useState(1);
+  const [budgetNotes, setBudgetNotes] = useState<string[]>([]);
+  const [paySchedule, setPaySchedule] = useState<PayScheduleResponse | null>(
+    null,
+  );
+  const [paySchedules, setPaySchedules] = useState<PayScheduleResponse[]>([]);
+  const [payScheduleSettingsOpen, setPayScheduleSettingsOpen] = useState(false);
+  const [scheduleMutating, setScheduleMutating] = useState(false);
   const [statusNames, setStatusNames] = useState<string[]>([]);
   const [statusByName, setStatusByName] = useState<Map<string, number>>(
     new Map(),
@@ -168,6 +216,13 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   const [paymentSourceByName, setPaymentSourceByName] = useState<
     Map<string, number>
   >(new Map());
+  const [incomeSourceNames, setIncomeSourceNames] = useState<string[]>([]);
+  const [incomeSourceByName, setIncomeSourceByName] = useState<
+    Map<string, number>
+  >(new Map());
+  const [incomeSummary, setIncomeSummary] = useState<IncomeSummaryResponse | null>(
+    null,
+  );
   const [budgetAccountIds, setBudgetAccountIds] = useState<number[]>([]);
   const [paymentStatuses, setPaymentStatuses] = useState<
     BudgetPaymentStatusResponse[]
@@ -175,6 +230,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   const [allAccounts, setAllAccounts] = useState<AccountResponse[]>([]);
   const [addAccountOpen, setAddAccountOpen] = useState(false);
   const [addPaymentOpen, setAddPaymentOpen] = useState(false);
+  const [addIncomeOpen, setAddIncomeOpen] = useState(false);
   const [addPaymentAccountId, setAddPaymentAccountId] = useState<
     number | undefined
   >(undefined);
@@ -184,6 +240,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   const [saving, setSaving] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [quickFilter, setQuickFilter] = useState("");
+  const [filterRevision, setFilterRevision] = useState(0);
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
   const [pinnedBottomRowData, setPinnedBottomRowData] = useState<
     Record<string, unknown>[]
@@ -204,12 +261,18 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         accountsResult,
         statusesResult,
         paymentSourcesResult,
+        paySchedulesResult,
+        incomeSourcesResult,
+        incomeSummaryResult,
       ] = await Promise.all([
         budgetsApi.getById(budgetId),
         paymentsApi.getAll(),
         accountsApi.getAll(),
         paymentsApi.getStatuses(),
         paymentSourcesApi.getAll().catch(() => null),
+        paySchedulesApi.getAll().catch(() => null),
+        incomeSourcesApi.getAll().catch(() => null),
+        incomesApi.getSummaryByBudget(budgetId).catch(() => null),
       ]);
 
       const budget = budgetResult.data;
@@ -242,12 +305,38 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         new Map(sources.map((source) => [source.name, source.paymentSourceId])),
       );
 
+      const incomeSources = (incomeSourcesResult?.data ?? []).filter(
+        (source) => source.isActive,
+      );
+      setIncomeSourceNames(incomeSources.map((source) => source.name));
+      setIncomeSourceByName(
+        new Map(
+          incomeSources.map((source) => [source.name, source.incomeSourceId]),
+        ),
+      );
+      setIncomeSummary(incomeSummaryResult?.data ?? null);
+
       setBudgetName(budget.name);
       setBudgetStartPeriod(budget.startPeriod);
+      setBudgetEndPeriod(budget.endPeriod);
+      setBudgetTemplateId(budget.budgetTemplateId);
       setBudgetAccountIds(budget.accountIds ?? []);
+      setBudgetNotes(parseBudgetNotes(budget.notes));
       setBudgetPeriod(
         formatBudgetPeriod(budget.startPeriod, budget.endPeriod),
       );
+
+      const schedules = paySchedulesResult?.data ?? [];
+      setPaySchedules(schedules);
+      const resolvedSchedule =
+        schedules.find(
+          (item) => item.payScheduleId === budget.payScheduleId,
+        ) ??
+        schedules.find((item) => item.isDefault) ??
+        schedules[0] ??
+        null;
+      setPaySchedule(resolvedSchedule);
+
       setRowData(buildBudgetGridRows(payments, accountsById));
       dirtyIds.current.clear();
       dirtyAccountIds.current.clear();
@@ -269,18 +358,25 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
     void loadData();
   }, [loadData]);
 
-  const { totalBudgeted, totalPaid, clearedCount, paymentHalves } = useMemo(() => {
-    const halves = budgetStartPeriod
-      ? summarizePaymentsByHalfMonth(rowData, budgetStartPeriod)
-      : null;
+  const { totalBudgeted, totalPaid, clearedCount, paymentPeriodSummaries } =
+    useMemo(() => {
+      const periods =
+        paySchedule && budgetStartPeriod && budgetEndPeriod
+          ? summarizePaymentsByPayPeriod(
+              rowData,
+              toScheduleConfig(paySchedule),
+              budgetStartPeriod,
+              budgetEndPeriod,
+            )
+          : null;
 
-    return {
-      totalBudgeted: rowData.reduce((sum, row) => sum + row.amount, 0),
-      totalPaid: rowData.reduce((sum, row) => sum + row.paymentMade, 0),
-      clearedCount: rowData.filter((row) => row.isCleared).length,
-      paymentHalves: halves,
-    };
-  }, [rowData, summaryTick, budgetStartPeriod]);
+      return {
+        totalBudgeted: rowData.reduce((sum, row) => sum + row.amount, 0),
+        totalPaid: rowData.reduce((sum, row) => sum + row.paymentMade, 0),
+        clearedCount: rowData.filter((row) => row.isCleared).length,
+        paymentPeriodSummaries: periods,
+      };
+    }, [rowData, summaryTick, budgetStartPeriod, budgetEndPeriod, paySchedule]);
 
   const includedAccountIds = useMemo(
     () => new Set(budgetAccountIds),
@@ -307,6 +403,68 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
     }
     return true;
   }, [pendingCount]);
+
+  const buildBudgetUpdateRequest = useCallback(
+    (notes: string[]): UpdateBudgetRequest => ({
+      name: budgetName,
+      startPeriod: budgetStartPeriod,
+      endPeriod: budgetEndPeriod,
+      budgetTemplateId,
+      notes: serializeBudgetNotes(notes),
+      accountIds: budgetAccountIds,
+      payScheduleId: paySchedule?.payScheduleId ?? null,
+    }),
+    [
+      budgetAccountIds,
+      budgetEndPeriod,
+      budgetName,
+      budgetStartPeriod,
+      budgetTemplateId,
+      paySchedule,
+    ],
+  );
+
+  const handleBudgetPayScheduleChange = useCallback(
+    async (payScheduleId: number) => {
+      if (!ensureAccountMutationAllowed()) return;
+
+      const selected = paySchedules.find(
+        (item) => item.payScheduleId === payScheduleId,
+      );
+      if (!selected) return;
+
+      setScheduleMutating(true);
+      setStatus(null);
+      try {
+        await budgetsApi.update(budgetId, {
+          ...buildBudgetUpdateRequest(budgetNotes),
+          payScheduleId,
+        });
+        setPaySchedule(selected);
+        setStatus({
+          type: "success",
+          message: `Using pay schedule "${selected.name}".`,
+        });
+      } catch (err) {
+        const message =
+          err instanceof ApiError
+            ? err.errors.join(", ") || err.message
+            : err instanceof Error
+              ? err.message
+              : "Failed to update pay schedule";
+        setStatus({ type: "error", message });
+      } finally {
+        setScheduleMutating(false);
+      }
+    },
+    [
+      budgetId,
+      budgetNotes,
+      buildBudgetUpdateRequest,
+      ensureAccountMutationAllowed,
+      paySchedules,
+    ],
+  );
 
   const handleRemoveAccount = useCallback(
     async (accountId: number, accountName: string) => {
@@ -442,6 +600,40 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
     [paymentSourceNames],
   );
 
+  const incomeSourceNameById = useMemo(() => {
+    const byId = new Map<number, string>();
+    for (const [name, id] of incomeSourceByName) {
+      byId.set(id, name);
+    }
+    return byId;
+  }, [incomeSourceByName]);
+
+  const incomeSourceOptions = useMemo(
+    () => [INCOME_SOURCE_NONE, ...incomeSourceNames],
+    [incomeSourceNames],
+  );
+
+  const incomeTotal = incomeSummary?.total ?? 0;
+
+  const incomeAllocated = useMemo(() => {
+    return rowData.reduce((sum, row) => {
+      if (!row.incomeSourceId) return sum;
+      const status = row.budgetPaymentStatusName.trim().toLowerCase();
+      if (status === "paid") return sum + row.paymentMade;
+      if (
+        status === "pending" ||
+        status === "scheduled" ||
+        status === "overdue" ||
+        status === "failed"
+      ) {
+        return sum + row.amount;
+      }
+      return sum;
+    }, 0);
+  }, [rowData, summaryTick]);
+
+  const incomeRemaining = Math.max(0, incomeTotal - incomeAllocated);
+
   const columnDefs = useMemo<ColDef<BudgetGridRow>[]>(
     () => [
       {
@@ -453,6 +645,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         pinned: "left",
         cellClass: "ag-cell-name",
         editable: false,
+        cellRenderer: AccountNameCellRenderer,
       },
       {
         colId: "accountCategoryName",
@@ -510,6 +703,24 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         ...currencyCol,
       },
       {
+        colId: "owed",
+        headerName: "Owed",
+        editable: false,
+        minWidth: 120,
+        filter: "agNumberColumnFilter",
+        cellClass: "ag-cell-currency",
+        headerClass: "ag-cell-currency-header",
+        valueGetter: (params: ValueGetterParams<BudgetGridRow>) =>
+          params.data
+            ? calculateOwed(params.data.amount, params.data.paymentMade)
+            : null,
+        valueFormatter: currencyFormatter,
+        filterValueGetter: (params: ValueGetterParams<BudgetGridRow>) =>
+          params.data
+            ? calculateOwed(params.data.amount, params.data.paymentMade)
+            : null,
+      },
+      {
         colId: "budgetPaymentStatusName",
         headerName: "Status",
         editable: editableUnlessPinned(),
@@ -541,27 +752,14 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         width: 110,
         cellClass: "ag-cell-center",
       },
-      {
-        colId: "paymentDate",
-        field: "paymentDate",
-        headerName: "Payment date",
+      createEditableDateColDef<BudgetGridRow>("paymentDate", "Payment date", {
         editable: editableUnlessPinned(),
-        filter: "agDateColumnFilter",
         minWidth: 130,
-        valueFormatter: (p) => formatDateForGrid(p.value ?? null),
-        valueParser: (p) =>
-          parseGridDate(String(p.newValue ?? "")) ?? p.oldValue,
-      },
-      {
-        colId: "clearedDate",
-        field: "clearedDate",
-        headerName: "Cleared date",
+      }),
+      createEditableDateColDef<BudgetGridRow>("clearedDate", "Cleared date", {
         editable: editableUnlessPinned(),
-        filter: "agDateColumnFilter",
         minWidth: 130,
-        valueFormatter: (p) => formatDateForGrid(p.value ?? null),
-        valueParser: (p) => parseGridDate(String(p.newValue ?? "")),
-      },
+      }),
       {
         colId: "accountNumber",
         field: "accountNumber",
@@ -645,10 +843,55 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         },
       },
       {
+        colId: "incomeSourceId",
+        headerName: "Income source",
+        editable: editableUnlessPinned(),
+        filter: "agTextColumnFilter",
+        minWidth: 160,
+        cellClass: "ag-cell-category",
+        valueGetter: (params: ValueGetterParams<BudgetGridRow>) => {
+          if (!params.data?.incomeSourceId) return INCOME_SOURCE_NONE;
+          return (
+            incomeSourceNameById.get(params.data.incomeSourceId) ??
+            params.data.incomeSourceName ??
+            String(params.data.incomeSourceId)
+          );
+        },
+        valueSetter: (params: ValueSetterParams<BudgetGridRow>) => {
+          if (!params.data) return false;
+
+          const selected = String(params.newValue);
+          if (selected === INCOME_SOURCE_NONE) {
+            params.data.incomeSourceId = null;
+            return true;
+          }
+
+          const id = incomeSourceByName.get(selected);
+          if (id === undefined) return false;
+          params.data.incomeSourceId = id;
+          return true;
+        },
+        ...(incomeSourceNames.length > 0
+          ? {
+              cellEditor: "agSelectCellEditor" as const,
+              cellEditorParams: {
+                values: incomeSourceOptions,
+              },
+            }
+          : {}),
+        filterValueGetter: (params: ValueGetterParams<BudgetGridRow>) => {
+          if (!params.data?.incomeSourceId) return INCOME_SOURCE_NONE;
+          return (
+            incomeSourceNameById.get(params.data.incomeSourceId) ??
+            INCOME_SOURCE_NONE
+          );
+        },
+      },
+      {
         colId: "actions",
         headerName: "",
         pinned: "right",
-        width: 168,
+        width: 260,
         sortable: false,
         filter: false,
         floatingFilter: false,
@@ -694,7 +937,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
                 className="rounded-full border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
                 title="Delete this payment"
               >
-                Delete
+                Delete Payment
               </button>
               {showRemoveAccount ? (
                 <button
@@ -709,7 +952,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
                   className="rounded-full border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
                   title="Remove account from budget"
                 >
-                  Remove
+                  Remove Acct
                 </button>
               ) : null}
             </div>
@@ -724,6 +967,10 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       paymentSourceByName,
       paymentSourceNameById,
       paymentSourceOptions,
+      incomeSourceByName,
+      incomeSourceNameById,
+      incomeSourceOptions,
+      incomeSourceNames,
     ],
   );
 
@@ -764,7 +1011,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         return "account-row-dirty";
       }
 
-      return getBudgetStatusRowClass(params.data.budgetPaymentStatusName);
+      return getBudgetPaymentRowClass(params.data);
     },
     [pendingCount],
   );
@@ -773,7 +1020,9 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
     (event: CellValueChangedEvent<BudgetGridRow>) => {
       if (!event.data || event.oldValue === event.newValue) return;
 
-      if (event.column.getColId() === "accountPaymentDay") {
+      const changedColId = event.column.getColId();
+
+      if (changedColId === "accountPaymentDay") {
         dirtyAccountIds.current.add(event.data.accountId);
       } else {
         dirtyIds.current.add(event.data.budgetPaymentId);
@@ -783,6 +1032,20 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         dirtyIds.current.size + dirtyAccountIds.current.size,
       );
       setSummaryTick((tick) => tick + 1);
+
+      if (
+        changedColId === "amount" ||
+        changedColId === "paymentMade" ||
+        changedColId === "paymentSourceId" ||
+        changedColId === "incomeSourceId" ||
+        changedColId === "budgetPaymentStatusName"
+      ) {
+        event.api.refreshCells({
+          rowNodes: [event.node],
+          columns: ["owed", "accountName"],
+        });
+      }
+
       event.api.redrawRows({ rowNodes: [event.node] });
       refreshPinnedTotals(event.api);
     },
@@ -911,26 +1174,124 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
                 {formatCurrency(totalPaid)} paid · {clearedCount} of{" "}
                 {rowData.length} cleared
                 {budgetPeriod ? ` · ${budgetPeriod}` : ""}
+                {paySchedule ? ` · ${paySchedule.name}` : ""}
               </p>
             ) : null}
           </div>
+
+          {!loading ? (
+            <div className="flex flex-wrap items-end gap-2">
+              <button
+                type="button"
+                onClick={() => setAddIncomeOpen(true)}
+                disabled={pendingCount > 0}
+                className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-2 text-xs font-medium text-white backdrop-blur-sm disabled:opacity-40"
+              >
+                <Plus size={14} aria-hidden />
+                Add income
+              </button>
+            </div>
+          ) : null}
+
+          {!loading && paySchedules.length > 0 ? (
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="text-xs text-white/80">
+                <span className="mb-1 block font-medium">Pay schedule</span>
+                <select
+                  value={paySchedule?.payScheduleId ?? ""}
+                  onChange={(event) =>
+                    void handleBudgetPayScheduleChange(Number(event.target.value))
+                  }
+                  disabled={scheduleMutating || pendingCount > 0}
+                  className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white backdrop-blur-sm"
+                >
+                  {paySchedules.map((item) => (
+                    <option
+                      key={item.payScheduleId}
+                      value={item.payScheduleId}
+                      className="text-[var(--foreground)]"
+                    >
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {paySchedule ? (
+                <button
+                  type="button"
+                  onClick={() => setPayScheduleSettingsOpen(true)}
+                  disabled={scheduleMutating || pendingCount > 0}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-2 text-xs font-medium text-white backdrop-blur-sm disabled:opacity-40"
+                >
+                  <Settings2 size={14} aria-hidden />
+                  Edit schedule
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
-        {!loading && paymentHalves ? (
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        {!loading ? (
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
+              <p className="text-xs text-white/70">Income</p>
+              <p className="mt-1 text-lg font-semibold tabular-nums text-white">
+                {formatCurrencyDetailed(incomeTotal)}
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
+              <p className="text-xs text-white/70">Allocated</p>
+              <p className="mt-1 text-lg font-semibold tabular-nums text-white">
+                {formatCurrencyDetailed(incomeAllocated)}
+              </p>
+            </div>
+            <div className="rounded-xl border border-emerald-300/30 bg-emerald-500/20 p-3 backdrop-blur-sm">
+              <p className="text-xs text-emerald-100/85">Remaining</p>
+              <p className="mt-1 text-lg font-semibold tabular-nums text-white">
+                {formatCurrencyDetailed(incomeRemaining)}
+              </p>
+            </div>
+          </div>
+        ) : null}
+
+        {!loading ? (
+          <BudgetNotesSection
+            budgetId={budgetId}
+            notes={budgetNotes}
+            onNotesChange={setBudgetNotes}
+            buildUpdateRequest={buildBudgetUpdateRequest}
+            disabled={scheduleMutating || pendingCount > 0}
+            onStatus={setStatus}
+          />
+        ) : null}
+
+        {!loading && paymentPeriodSummaries ? (
+          <div
+            className={`mt-5 grid gap-4 sm:grid-cols-2 ${
+              paymentPeriodSummaries.periods.length + 1 >= 4
+                ? "xl:grid-cols-4"
+                : "lg:grid-cols-3"
+            }`}
+          >
+            {paymentPeriodSummaries.periods.map((period) => (
+              <PaymentHalfPanel
+                key={`${period.periodStart}-${period.periodEnd}`}
+                title={period.label}
+                summary={period.summary}
+                cleared={period.cleared}
+              />
+            ))}
             <PaymentHalfPanel
-              title={`Before ${paymentHalves.cutoffLabel}`}
-              summary={paymentHalves.before}
-            />
-            <PaymentHalfPanel
-              title={`After ${paymentHalves.cutoffLabel}`}
-              summary={paymentHalves.after}
+              title="No Payment"
+              summary={paymentPeriodSummaries.noDate}
+              cleared={paymentPeriodSummaries.noDateCleared}
             />
           </div>
         ) : loading ? (
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <div className="h-28 animate-pulse rounded-xl bg-white/10" />
-            <div className="h-28 animate-pulse rounded-xl bg-white/10" />
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="h-36 animate-pulse rounded-xl bg-white/10" />
+            <div className="h-36 animate-pulse rounded-xl bg-white/10" />
+            <div className="h-36 animate-pulse rounded-xl bg-white/10" />
           </div>
         ) : null}
       </div>
@@ -1026,6 +1387,17 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
           </p>
         </div>
 
+        <GridActiveFilters
+          gridApi={gridApi}
+          quickFilter={quickFilter}
+          onQuickFilterChange={setQuickFilter}
+          filterRevision={filterRevision}
+          onFiltersCleared={() => {
+            setFilterRevision((revision) => revision + 1);
+            refreshPinnedTotals();
+          }}
+        />
+
         <div className="account-grid-viewport">
           <AgGridReact<BudgetGridRow>
             ref={gridRef}
@@ -1038,7 +1410,10 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
             getRowClass={getRowClass}
             onCellValueChanged={onCellValueChanged}
             onGridReady={onGridReady}
-            onFilterChanged={() => refreshPinnedTotals()}
+            onFilterChanged={() => {
+              setFilterRevision((revision) => revision + 1);
+              refreshPinnedTotals();
+            }}
             onColumnVisible={scheduleColumnStateSave}
             onColumnMoved={scheduleColumnStateSave}
             onColumnResized={scheduleColumnStateSave}
@@ -1084,6 +1459,52 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
               message: `Added payment for ${accountName}.`,
             });
             void loadData();
+          }}
+        />
+      ) : null}
+
+      {addIncomeOpen ? (
+        <AddIncomeDialog
+          budgets={[
+            {
+              budgetId,
+              name: budgetName,
+              startPeriod: budgetStartPeriod,
+              endPeriod: budgetEndPeriod,
+              budgetTemplateId,
+              accountIds: budgetAccountIds,
+              payScheduleId: paySchedule?.payScheduleId ?? null,
+            },
+          ]}
+          sources={incomeSourceNames.map((name) => ({
+            incomeSourceId: incomeSourceByName.get(name)!,
+            name,
+            isActive: true,
+          }))}
+          initialBudgetId={budgetId}
+          onClose={() => setAddIncomeOpen(false)}
+          onAdded={() => {
+            setStatus({ type: "success", message: "Income added." });
+            void loadData();
+          }}
+        />
+      ) : null}
+
+      {payScheduleSettingsOpen && paySchedule ? (
+        <PayScheduleSettingsDialog
+          schedule={paySchedule}
+          onClose={() => setPayScheduleSettingsOpen(false)}
+          onSaved={(updated) => {
+            setPaySchedule(updated);
+            setPaySchedules((current) =>
+              current.map((item) =>
+                item.payScheduleId === updated.payScheduleId ? updated : item,
+              ),
+            );
+            setStatus({
+              type: "success",
+              message: `Updated pay schedule "${updated.name}".`,
+            });
           }}
         />
       ) : null}

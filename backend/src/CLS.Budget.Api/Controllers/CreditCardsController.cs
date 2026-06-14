@@ -1,12 +1,15 @@
+using CLS.Budget.Api.Auth;
 using CLS.Budget.Application.Abstractions.Services;
 using CLS.Budget.Application.Accounts.Dtos;
 using CLS.Budget.Application.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CLS.Budget.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/creditcards")]
+[Authorize(Policy = AuthorizationPolicies.TenantMember)]
 public class CreditCardsController(ICreditCardService creditCardService) : ControllerBase
 {
     [HttpGet]
@@ -37,6 +40,7 @@ public class CreditCardsController(ICreditCardService creditCardService) : Contr
         return result.Success ? Ok(result) : NotFound(result);
     }
 
+    [Authorize(Policy = AuthorizationPolicies.TenantOwner)]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {

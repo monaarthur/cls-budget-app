@@ -1,12 +1,15 @@
+using CLS.Budget.Api.Auth;
 using CLS.Budget.Application.Abstractions.Services;
 using CLS.Budget.Application.Accounts.Dtos;
 using CLS.Budget.Application.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CLS.Budget.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/[controller]")]
+[Authorize(Policy = AuthorizationPolicies.TenantMember)]
 public class AccountsController(IAccountService accountService) : ControllerBase
 {
     [HttpGet]
@@ -62,6 +65,7 @@ public class AccountsController(IAccountService accountService) : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Policy = AuthorizationPolicies.TenantOwner)]
     [HttpDelete("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]

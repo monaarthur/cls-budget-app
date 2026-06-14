@@ -3,10 +3,29 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { GridApi } from "ag-grid-community";
 import { Columns3 } from "lucide-react";
-import { GRID_COLUMNS } from "@/features/accounts/components/gridColumns";
+import {
+  CREDIT_CARD_EXCLUDED_COLUMNS,
+  GRID_COLUMNS,
+} from "@/features/accounts/components/gridColumns";
 import { resetColumnState } from "@/features/accounts/components/gridColumnState";
 
-export function ColumnPicker({ gridApi }: { gridApi: GridApi | null }) {
+function gridColumnsForPicker(creditCardOnly: boolean) {
+  if (!creditCardOnly) return GRID_COLUMNS;
+  return GRID_COLUMNS.filter(
+    (column) => !CREDIT_CARD_EXCLUDED_COLUMNS.has(column.colId),
+  );
+}
+
+export function ColumnPicker({
+  gridApi,
+  columnStateNamespace = "accounts-grid",
+  creditCardOnly = false,
+}: {
+  gridApi: GridApi | null;
+  columnStateNamespace?: string;
+  creditCardOnly?: boolean;
+}) {
+  const pickerColumns = gridColumnsForPicker(creditCardOnly);
   const [open, setOpen] = useState(false);
   const [visible, setVisible] = useState<Record<string, boolean>>({});
   const panelRef = useRef<HTMLDivElement>(null);
@@ -14,12 +33,12 @@ export function ColumnPicker({ gridApi }: { gridApi: GridApi | null }) {
   const syncVisibility = useCallback(() => {
     if (!gridApi) return;
     const next: Record<string, boolean> = {};
-    for (const { colId } of GRID_COLUMNS) {
+    for (const { colId } of pickerColumns) {
       const column = gridApi.getColumn(colId);
       next[colId] = column?.isVisible() ?? true;
     }
     setVisible(next);
-  }, [gridApi]);
+  }, [gridApi, pickerColumns]);
 
   useEffect(() => {
     if (!gridApi) return;
@@ -54,14 +73,14 @@ export function ColumnPicker({ gridApi }: { gridApi: GridApi | null }) {
 
   const showAll = () => {
     gridApi?.setColumnsVisible(
-      GRID_COLUMNS.map((c) => c.colId),
+      pickerColumns.map((c) => c.colId),
       true,
     );
   };
 
   const hideOptional = () => {
     if (!gridApi) return;
-    const optional = GRID_COLUMNS.filter(
+    const optional = pickerColumns.filter(
       (c) => c.colId !== "name" && c.colId !== "number",
     );
     gridApi.setColumnsVisible(
@@ -73,7 +92,7 @@ export function ColumnPicker({ gridApi }: { gridApi: GridApi | null }) {
 
   const handleResetLayout = () => {
     if (!gridApi) return;
-    resetColumnState(gridApi);
+    resetColumnState(gridApi, columnStateNamespace);
     syncVisibility();
   };
 
@@ -118,7 +137,7 @@ export function ColumnPicker({ gridApi }: { gridApi: GridApi | null }) {
             </div>
           </div>
           <ul className="account-grid-column-list">
-            {GRID_COLUMNS.map(({ colId, label }) => (
+            {pickerColumns.map(({ colId, label }) => (
               <li key={colId}>
                 <label className="account-grid-column-option">
                   <input

@@ -1,4 +1,10 @@
 import type { BudgetGridRow } from "@/features/budgets/utils/budgetGridMapper";
+import type { PayScheduleConfig } from "@/features/pay-schedules/types/paySchedule";
+import {
+  getPayPeriodBoundaries,
+  resolvePaymentPayPeriodIndex,
+  type PayPeriodBoundary,
+} from "@/features/pay-schedules/utils/payDateCalculator";
 
 export type TrackedPaymentStatus = "pending" | "paid" | "scheduled";
 
@@ -8,14 +14,61 @@ export interface PaymentHalfSummary {
   scheduled: number;
 }
 
-export interface BudgetPaymentHalfSummaries {
-  before: PaymentHalfSummary;
-  after: PaymentHalfSummary;
-  cutoffLabel: string;
+export interface PaymentClearedSummary {
+  count: number;
+  amount: number;
+  total: number;
+}
+
+export interface PaymentPeriodSummary {
+  label: string;
+  periodStart: string;
+  periodEnd: string;
+  summary: PaymentHalfSummary;
+  cleared: PaymentClearedSummary;
+}
+
+export interface BudgetPaymentPeriodSummaries {
+  periods: PaymentPeriodSummary[];
+  noDate: PaymentHalfSummary;
+  noDateCleared: PaymentClearedSummary;
 }
 
 function emptySummary(): PaymentHalfSummary {
   return { pending: 0, paid: 0, scheduled: 0 };
+}
+
+function emptyClearedSummary(): PaymentClearedSummary {
+  return { count: 0, amount: 0, total: 0 };
+}
+
+export function isPaymentDateSelected(
+  paymentDate: string | null | undefined,
+): boolean {
+  if (paymentDate == null || paymentDate.trim() === "") return false;
+  const ms = new Date(paymentDate).getTime();
+  return Number.isFinite(ms);
+}
+
+function addRowToSummary(
+  summary: PaymentHalfSummary,
+  row: BudgetGridRow,
+): void {
+  const status = normalizeTrackedStatus(row.budgetPaymentStatusName);
+  if (!status) return;
+
+  const value = status === "paid" ? row.paymentMade : row.amount;
+  summary[status] += value;
+}
+
+function addRowToCleared(
+  cleared: PaymentClearedSummary,
+  row: BudgetGridRow,
+): void {
+  cleared.total += 1;
+  if (!row.isCleared) return;
+  cleared.count += 1;
+  cleared.amount += row.paymentMade;
 }
 
 export function normalizeTrackedStatus(
@@ -25,48 +78,119 @@ export function normalizeTrackedStatus(
   if (normalized === "pending") return "pending";
   if (normalized === "paid") return "paid";
   if (normalized === "scheduled") return "scheduled";
+  if (normalized === "failed") return "pending";
+  if (normalized === "overdue") return "pending";
   return null;
 }
 
-function getMidMonthCutoffMs(budgetStartPeriod: string): number {
-  const budgetStart = new Date(budgetStartPeriod);
-  return Date.UTC(
-    budgetStart.getUTCFullYear(),
-    budgetStart.getUTCMonth(),
-    15,
+export function summarizePaymentsByPayPeriod(
+  rows: BudgetGridRow[],
+  schedule: PayScheduleConfig,
+  budgetStartPeriod: string,
+  budgetEndPeriod: string,
+): BudgetPaymentPeriodSummaries {
+  const boundaries = getPayPeriodBoundaries(
+    schedule,
+    budgetStartPeriod,
+    budgetEndPeriod,
   );
+
+  const periods = boundaries.map((boundary) => ({
+    label: formatPeriodTitle(boundary),
+    periodStart: boundary.periodStart,
+    periodEnd: boundary.periodEnd,
+    summary: emptySummary(),
+    cleared: emptyClearedSummary(),
+  }));
+
+  const noDate = emptySummary();
+  const noDateCleared = emptyClearedSummary();
+
+  for (const row of rows) {
+    if (!isPaymentDateSelected(row.paymentDate)) {
+      addRowToSummary(noDate, row);
+      addRowToCleared(noDateCleared, row);
+      continue;
+    }
+
+    const periodIndex = resolvePaymentPayPeriodIndex(
+      row.paymentDate!,
+      periods,
+      budgetStartPeriod,
+    );
+
+    if (periodIndex >= 0) {
+      addRowToSummary(periods[periodIndex].summary, row);
+      addRowToCleared(periods[periodIndex].cleared, row);
+    }
+  }
+
+  return { periods, noDate, noDateCleared };
 }
 
-export function formatMidMonthCutoffLabel(budgetStartPeriod: string): string {
-  const budgetStart = new Date(budgetStartPeriod);
-  const month = budgetStart.toLocaleString("en-US", {
-    month: "numeric",
-    timeZone: "UTC",
-  });
-  return `${month}/15`;
+export function summarizePaymentsWithNoDate(
+  rows: BudgetGridRow[],
+): PaymentHalfSummary {
+  const summary = emptySummary();
+
+  for (const row of rows) {
+    if (isPaymentDateSelected(row.paymentDate)) continue;
+    addRowToSummary(summary, row);
+  }
+
+  return summary;
 }
 
+export function getPaymentHalfSummaryTotal(
+  summary: PaymentHalfSummary,
+): number {
+  return summary.pending + summary.paid + summary.scheduled;
+}
+
+function formatPeriodTitle(boundary: PayPeriodBoundary): string {
+  if (boundary.label.startsWith("After ")) {
+    return `Payment ${boundary.label.toLowerCase()}`;
+  }
+
+  if (boundary.label.startsWith("Before ")) {
+    return `Payment ${boundary.label.toLowerCase()}`;
+  }
+
+  if (boundary.label.startsWith("Through ")) {
+    return `Payment through ${boundary.label.replace("Through ", "")}`;
+  }
+
+  return boundary.label;
+}
+
+/** @deprecated Use summarizePaymentsByPayPeriod */
 export function summarizePaymentsByHalfMonth(
   rows: BudgetGridRow[],
   budgetStartPeriod: string,
-): BudgetPaymentHalfSummaries {
-  const cutoffMs = getMidMonthCutoffMs(budgetStartPeriod);
-  const before = emptySummary();
-  const after = emptySummary();
+): {
+  before: PaymentHalfSummary;
+  after: PaymentHalfSummary;
+  cutoffLabel: string;
+} {
+  const budgetEnd = new Date(budgetStartPeriod);
+  budgetEnd.setUTCMonth(budgetEnd.getUTCMonth() + 1);
+  budgetEnd.setUTCDate(0);
 
-  for (const row of rows) {
-    const status = normalizeTrackedStatus(row.budgetPaymentStatusName);
-    if (!status) continue;
-
-    const value = status === "paid" ? row.paymentMade : row.amount;
-    const bucket =
-      new Date(row.paymentDate).getTime() < cutoffMs ? before : after;
-    bucket[status] += value;
-  }
+  const result = summarizePaymentsByPayPeriod(
+    rows,
+    {
+      payFrequencyTypeId: 3,
+      anchorDate: null,
+      semiMonthlyDay1: 1,
+      semiMonthlyDay2: 15,
+    },
+    budgetStartPeriod,
+    budgetEnd.toISOString(),
+  );
 
   return {
-    before,
-    after,
-    cutoffLabel: formatMidMonthCutoffLabel(budgetStartPeriod),
+    before: result.periods[0]?.summary ?? emptySummary(),
+    after: result.periods[1]?.summary ?? emptySummary(),
+    cutoffLabel: "15",
   };
 }

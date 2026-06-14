@@ -13,4 +13,6 @@ public sealed class PaymentResponse
     public DateTime PaymentDate { get; init; }
     public DateTime? ClearedDate { get; init; }
     public int? PaymentSourceId { get; init; }
+    public int? IncomeSourceId { get; init; }
+    public string? IncomeSourceName { get; init; }
 }

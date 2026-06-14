@@ -1,5 +1,8 @@
 using CLS.Budget.Application;
+using CLS.Budget.Application.Abstractions;
 using CLS.Budget.Application.Accounts.Validators;
+using CLS.Budget.Domain;
+using CLS.Budget.Import;
 using CLS.Budget.Import.Accounts;
 using CLS.Budget.Import.MayBudgets;
 using CLS.Budget.Import.PaymentSources;
@@ -56,6 +59,15 @@ if (!File.Exists(csvPath))
 var activeOnly = argsList.Contains("--active-only");
 var dryRun = argsList.Contains("--dry-run");
 
+var tenantId = SeedTenant.DefaultTenantId;
+var tenantArgIndex = argsList.FindIndex(a => string.Equals(a, "--tenant", StringComparison.OrdinalIgnoreCase));
+if (tenantArgIndex >= 0
+    && (tenantArgIndex + 1 >= argsList.Count || !Guid.TryParse(argsList[tenantArgIndex + 1], out tenantId)))
+{
+    Console.Error.WriteLine("Invalid or missing value for --tenant (expected a GUID).");
+    return 1;
+}
+
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureAppConfiguration((context, config) =>
     {
@@ -71,6 +83,7 @@ var host = Host.CreateDefaultBuilder(args)
     {
         services.AddApplication();
         services.AddInfrastructure(context.Configuration);
+        services.AddSingleton<ITenantContext>(new CliTenantContext(tenantId));
         services.AddSingleton<CreateAccountRequestValidator>();
         services.AddScoped<AccountCsvImporter>();
         services.AddScoped<PaymentDayUpdateImporter>();
@@ -80,6 +93,9 @@ var host = Host.CreateDefaultBuilder(args)
     .Build();
 
 using var scope = host.Services.CreateScope();
+
+Console.WriteLine($"Target tenant: {tenantId}");
+Console.WriteLine();
 
 if (command == "accounts")
 {
@@ -234,10 +250,12 @@ static void PrintHelp()
 
         Usage:
           dotnet run --project src/CLS.Budget.Import -- validate <accounts.csv>
-          dotnet run --project src/CLS.Budget.Import -- accounts <file.csv> [--active-only] [--dry-run]
-          dotnet run --project src/CLS.Budget.Import -- payment-days <file.csv> [--dry-run]
-          dotnet run --project src/CLS.Budget.Import -- payment-sources <file.csv> [--dry-run]
-          dotnet run --project src/CLS.Budget.Import -- may-budget <file.csv> [--month 5] [--year 2026] [--template-id 1] [--active-only] [--dry-run]
+          dotnet run --project src/CLS.Budget.Import -- accounts <file.csv> [--active-only] [--dry-run] [--tenant <guid>]
+          dotnet run --project src/CLS.Budget.Import -- payment-days <file.csv> [--dry-run] [--tenant <guid>]
+          dotnet run --project src/CLS.Budget.Import -- payment-sources <file.csv> [--dry-run] [--tenant <guid>]
+          dotnet run --project src/CLS.Budget.Import -- may-budget <file.csv> [--month 5] [--year 2026] [--template-id 1] [--active-only] [--dry-run] [--tenant <guid>]
+
+        --tenant <guid>: target tenant for the import. Defaults to the seeded tenant when omitted.
 
         May budget CSV: spreadsheet export with a header row containing "Account / Bill" and "Amount To Pay".
         Creates the budget for the month/year if missing, then inserts or updates BudgetPayment rows.

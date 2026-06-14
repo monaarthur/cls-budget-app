@@ -1,0 +1,110 @@
+{
+  "1": {
+    "accountId": 1,
+    "name": "Chase Hyatt",
+    "domain": "chase.com",
+    "url": "https://import.cls-budget.local",
+    "filename": "1.jpg",
+    "source": "https://www.google.com/s2/favicons?domain=chase.com&sz=128",
+    "updatedAt": "2026-05-31T14:13:28.285Z"
+  },
+  "19": {
+    "accountId": 19,
+    "name": "Chase Hyatt",
+    "domain": "chase.com",
+    "url": "https://import.cls-budget.local",
+    "filename": "19.jpg",
+    "source": "https://www.google.com/s2/favicons?domain=chase.com&sz=128",
+    "updatedAt": "2026-05-31T14:13:28.259Z"
+  },
+  "20": {
+    "accountId": 20,
+    "name": "Discover",
+    "domain": "discover.com",
+    "url": "https://import.cls-budget.local",
+    "filename": "20.png",
+    "source": "https://www.google.com/s2/favicons?domain=discover.com&sz=128",
+    "updatedAt": "2026-05-31T14:13:28.384Z"
+  },
+  "21": {
+    "accountId": 21,
+    "name": "American Express",
+    "domain": "americanexpress.com",
+    "url": "https://import.cls-budget.local",
+    "filename": "21.png",
+    "source": "https://www.google.com/s2/favicons?domain=americanexpress.com&sz=128",
+    "updatedAt": "2026-05-31T14:13:28.097Z"
+  },
+  "22": {
+    "accountId": 22,
+    "name": "Citibank",
+    "domain": "citi.com",
+    "url": "https://import.cls-budget.local",
+    "filename": "22.png",
+    "source": "https://www.google.com/s2/favicons?domain=citi.com&sz=128",
+    "updatedAt": "2026-05-31T14:13:28.306Z"
+  },
+  "23": {
+    "accountId": 23,
+    "name": "Capital One",
+    "domain": "capitalone.com",
+    "url": "https://import.cls-budget.local",
+    "filename": "23.png",
+    "source": "https://icons.duckduckgo.com/ip3/capitalone.com.ico",
+    "updatedAt": "2026-05-31T14:13:28.204Z"
+  },
+  "24": {
+    "accountId": 24,
+    "name": "Macys",
+    "domain": "macys.com",
+    "url": "https://import.cls-budget.local",
+    "filename": "24.png",
+    "source": "https://www.google.com/s2/favicons?domain=macys.com&sz=128",
+    "updatedAt": "2026-05-31T14:13:28.428Z"
+  },
+  "25": {
+    "accountId": 25,
+    "name": "Credit One",
+    "domain": "creditonebank.com",
+    "url": "https://import.cls-budget.local",
+    "filename": "25.png",
+    "source": "https://www.google.com/s2/favicons?domain=creditonebank.com&sz=128",
+    "updatedAt": "2026-05-31T14:13:28.361Z"
+  },
+  "26": {
+    "accountId": 26,
+    "name": "HVCU",
+    "domain": "hvcu.org",
+    "url": "https://www.hvcu.org/",
+    "filename": "26.png",
+    "source": "https://www.google.com/s2/favicons?domain=hvcu.org&sz=128",
+    "updatedAt": "2026-05-31T14:13:28.406Z"
+  },
+  "27": {
+    "accountId": 27,
+    "name": "Spririt",
+    "domain": "bankofamerica.com",
+    "url": "https://secure.bankofamerica.com/myaccounts/signin/signIn.go?returnSiteIndicator=GAIMW&langPref=en-us&request_locale=en-us&capturemode=N&newuser=false&bcIP=F",
+    "filename": "27.png",
+    "source": "https://www.google.com/s2/favicons?domain=bankofamerica.com&sz=128",
+    "updatedAt": "2026-05-31T14:13:28.452Z"
+  },
+  "28": {
+    "accountId": 28,
+    "name": "Wayfair",
+    "domain": "wayfair.com",
+    "url": "https://citiretailservices.citibankonline.com/RSauth/signon?pageName=signon&siteId=PLCN_WFCC&langId=en_US&brandId=WF",
+    "filename": "28.png",
+    "source": "https://www.google.com/s2/favicons?domain=wayfair.com&sz=128",
+    "updatedAt": "2026-05-31T14:13:28.475Z"
+  },
+  "29": {
+    "accountId": 29,
+    "name": "Amazon",
+    "domain": "amazon.com",
+    "url": "https://import.cls-budget.local",
+    "filename": "29.png",
+    "source": "https://www.google.com/s2/favicons?domain=amazon.com&sz=128",
+    "updatedAt": "2026-05-31T14:13:28.069Z"
+  }
+}

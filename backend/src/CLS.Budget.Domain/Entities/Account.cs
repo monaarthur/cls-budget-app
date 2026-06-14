@@ -1,8 +1,9 @@
 ﻿namespace CLS.Budget.Domain.Entities;
 
-public class Account
+public class Account : ITenantOwned
 {
     public int AccountId { get; set; }
+    public Guid TenantId { get; set; }
     public string Name { get; set; } = null!;
     public string Number { get; set; } = null!;
     public string? Description { get; set; }

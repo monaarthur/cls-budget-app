@@ -34,73 +34,75 @@ internal sealed class PaymentDayUpdateImporter(IAccountRepository accountReposit
                 continue;
             }
 
-            var match = FindAccount(accounts, row);
-            if (match is null)
+            var matches = FindAccounts(accounts, row);
+            if (matches.Count == 0)
             {
                 summary.NotFound++;
                 summary.Messages.Add($"Line {line} ({FormatRowLabel(row)}): no matching account found.");
                 continue;
             }
 
-            if (match.PaymentDay == paymentDay)
+            foreach (var match in matches)
             {
-                summary.Unchanged++;
-                continue;
-            }
+                if (match.PaymentDay == paymentDay)
+                {
+                    summary.Unchanged++;
+                    continue;
+                }
 
-            if (dryRun)
-            {
+                if (dryRun)
+                {
+                    summary.Updated++;
+                    continue;
+                }
+
+                var tracked = await accountRepository.GetByIdAsync(match.AccountId, cancellationToken);
+                if (tracked is null)
+                {
+                    summary.Failed++;
+                    summary.Messages.Add(
+                        $"Line {line} ({FormatRowLabel(row)}): account id {match.AccountId} disappeared.");
+                    continue;
+                }
+
+                tracked.PaymentDay = paymentDay;
+                await accountRepository.UpdateAsync(tracked, cancellationToken);
                 summary.Updated++;
-                continue;
             }
-
-            var tracked = await accountRepository.GetByIdAsync(match.AccountId, cancellationToken);
-            if (tracked is null)
-            {
-                summary.Failed++;
-                summary.Messages.Add($"Line {line} ({FormatRowLabel(row)}): account id {match.AccountId} disappeared.");
-                continue;
-            }
-
-            tracked.PaymentDay = paymentDay;
-            await accountRepository.UpdateAsync(tracked, cancellationToken);
-            summary.Updated++;
         }
 
         return summary;
     }
 
-    private static Account? FindAccount(IReadOnlyList<Account> accounts, PaymentDayCsvRow row)
+    private static IReadOnlyList<Account> FindAccounts(IReadOnlyList<Account> accounts, PaymentDayCsvRow row)
     {
         var name = NormalizeName(row.Name);
         var number = NormalizeNumber(row.Number);
 
         if (!string.IsNullOrEmpty(number) && !string.IsNullOrEmpty(name))
         {
-            return accounts.FirstOrDefault(a =>
-                NormalizeNumber(a.Number) == number
-                && NormalizeName(a.Name) == name);
+            return accounts
+                .Where(a =>
+                    NormalizeNumber(a.Number) == number
+                    && NormalizeName(a.Name) == name)
+                .ToList();
         }
 
         if (!string.IsNullOrEmpty(number))
         {
-            var byNumber = accounts
+            return accounts
                 .Where(a => NormalizeNumber(a.Number) == number)
                 .ToList();
-
-            return byNumber.Count == 1 ? byNumber[0] : null;
         }
 
         if (!string.IsNullOrEmpty(name))
         {
-            var byName = accounts
+            return accounts
                 .Where(a => NormalizeName(a.Name) == name)
                 .ToList();
-
-            return byName.Count == 1 ? byName[0] : null;
         }
 
-        return null;
+        return [];
     }
 
     internal static bool TryParsePaymentDay(string? value, out int paymentDay)

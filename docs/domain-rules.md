@@ -412,6 +412,8 @@ Potential future AI functionality:
 
 # Migration Ownership
 
+See also **[database.md](./database.md)** for the table inventory, tenancy model, code paths, and migration workflow.
+
 All Entity Framework Core migrations are centrally managed through:
 
 ```text

@@ -17,7 +17,7 @@ export const GRID_COLUMNS = [
   { colId: "notes", label: "Notes" },
 ] as const;
 
-/** Columns shown on first load; others can be revealed via the column picker. */
+/** Columns hidden on first load for the accounts grid. */
 export const DEFAULT_HIDDEN_COLUMNS = new Set([
   "phone",
   "email",
@@ -26,4 +26,10 @@ export const DEFAULT_HIDDEN_COLUMNS = new Set([
   "description",
   "notes",
   "paidOffDate",
+]);
+
+/** Not shown on credit card pages (grid or column picker). */
+export const CREDIT_CARD_EXCLUDED_COLUMNS = new Set([
+  "accountCategoryName",
+  "accountOpenDate",
 ]);

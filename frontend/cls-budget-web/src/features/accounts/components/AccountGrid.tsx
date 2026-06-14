@@ -28,13 +28,20 @@ import type { AccountGridRow } from "@/features/accounts/utils/accountMapper";
 import {
   formatDateForGrid,
   formatPaymentDay,
+  isCreditCardAccount,
   parseGridDate,
   toUpdateAccountRequest,
 } from "@/features/accounts/utils/accountMapper";
 import { accountGridTheme } from "@/features/accounts/components/accountGridTheme";
 import { ColumnPicker } from "@/features/accounts/components/ColumnPicker";
-import { DEFAULT_HIDDEN_COLUMNS } from "@/features/accounts/components/gridColumns";
+import { CreditCardNameCellRenderer } from "@/features/accounts/components/CreditCardNameCellRenderer";
+import { SyncAccountLogosButton } from "@/features/accounts/components/SyncAccountLogosButton";
 import {
+  CREDIT_CARD_EXCLUDED_COLUMNS,
+} from "@/features/accounts/components/gridColumns";
+import {
+  defaultHiddenColumns,
+  filterExistingColIds,
   restoreColumnState,
   saveColumnState,
 } from "@/features/accounts/components/gridColumnState";
@@ -44,6 +51,7 @@ import {
   recalculatePinnedBottomRowData,
   type PinnedTotalsConfig,
 } from "@/features/accounts/components/gridPinnedTotals";
+import { GridActiveFilters } from "@/features/accounts/components/GridActiveFilters";
 import { ApiError } from "@/lib/api/client";
 import { formatCurrency, formatCurrencyDetailed } from "@/lib/format";
 
@@ -87,7 +95,16 @@ const currencyCol = {
   filter: "agNumberColumnFilter" as const,
 };
 
-export function AccountGrid() {
+type AccountGridProps = {
+  creditCardOnly?: boolean;
+};
+
+export function AccountGrid({ creditCardOnly = false }: AccountGridProps) {
+  const columnStateNamespace = creditCardOnly
+    ? "credit-cards-grid"
+    : "accounts-grid";
+  const entityLabel = creditCardOnly ? "credit card" : "account";
+  const entityLabelPlural = creditCardOnly ? "credit cards" : "accounts";
   const gridRef = useRef<AgGridReact<AccountGridRow>>(null);
   const dirtyIds = useRef(new Set<number>());
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -97,11 +114,13 @@ export function AccountGrid() {
   const [saving, setSaving] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [quickFilter, setQuickFilter] = useState("");
+  const [filterRevision, setFilterRevision] = useState(0);
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
   const [pinnedBottomRowData, setPinnedBottomRowData] = useState<
     Record<string, unknown>[]
   >([]);
   const [summaryTick, setSummaryTick] = useState(0);
+  const [logoVersion, setLogoVersion] = useState(0);
   const [status, setStatus] = useState<{
     type: "success" | "error";
     message: string;
@@ -112,7 +131,10 @@ export function AccountGrid() {
     setStatus(null);
     try {
       const result = await accountsApi.getAll();
-      setRowData(sortRowsByCategory(result.data ?? [], (row) => row.name));
+      const accounts = (result.data ?? []).filter(
+        (account) => !creditCardOnly || isCreditCardAccount(account),
+      );
+      setRowData(sortRowsByCategory(accounts, (row) => row.name));
       dirtyIds.current.clear();
       setPendingCount(0);
     } catch (err) {
@@ -121,12 +143,14 @@ export function AccountGrid() {
           ? err.message
           : err instanceof Error
             ? err.message
-            : "Failed to load accounts";
+            : creditCardOnly
+              ? "Failed to load credit cards"
+              : "Failed to load accounts";
       setStatus({ type: "error", message });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [creditCardOnly]);
 
   useEffect(() => {
     void loadAccounts();
@@ -139,8 +163,8 @@ export function AccountGrid() {
     };
   }, [rowData, summaryTick]);
 
-  const columnDefs = useMemo<ColDef<AccountGridRow>[]>(
-    () => [
+  const columnDefs = useMemo<ColDef<AccountGridRow>[]>(() => {
+    const defs: ColDef<AccountGridRow>[] = [
       {
         field: "name",
         headerName: "Name",
@@ -149,6 +173,12 @@ export function AccountGrid() {
         minWidth: 180,
         pinned: "left",
         cellClass: "ag-cell-name",
+        ...(creditCardOnly
+          ? {
+              cellRenderer: CreditCardNameCellRenderer,
+              cellRendererParams: { logoVersion },
+            }
+          : {}),
       },
       {
         field: "number",
@@ -300,9 +330,15 @@ export function AccountGrid() {
         minWidth: 240,
         flex: 1,
       },
-    ],
-    [],
-  );
+    ];
+
+    if (!creditCardOnly) return defs;
+
+    return defs.filter((column) => {
+      const colId = column.colId ?? column.field;
+      return !CREDIT_CARD_EXCLUDED_COLUMNS.has(String(colId));
+    });
+  }, [creditCardOnly, logoVersion]);
 
   const defaultColDef = useMemo<ColDef>(
     () => ({
@@ -369,7 +405,7 @@ export function AccountGrid() {
       setPendingCount(0);
       setStatus({
         type: "success",
-        message: `Saved ${rowsToSave.length} account${rowsToSave.length === 1 ? "" : "s"}.`,
+        message: `Saved ${rowsToSave.length} ${rowsToSave.length === 1 ? entityLabel : entityLabelPlural}.`,
       });
       await loadAccounts();
     } catch (err) {
@@ -398,9 +434,9 @@ export function AccountGrid() {
 
     persistTimerRef.current = setTimeout(() => {
       const api = gridRef.current?.api;
-      if (api) saveColumnState(api);
+      if (api) saveColumnState(api, columnStateNamespace);
     }, 250);
-  }, []);
+  }, [columnStateNamespace]);
 
   useEffect(
     () => () => {
@@ -416,11 +452,17 @@ export function AccountGrid() {
   const onGridReady = (event: GridReadyEvent) => {
     setGridApi(event.api);
 
-    const restored = restoreColumnState(event.api);
+    const restored = restoreColumnState(event.api, columnStateNamespace);
     if (!restored) {
-      event.api.setColumnsVisible([...DEFAULT_HIDDEN_COLUMNS], false);
+      const hiddenColumns = filterExistingColIds(
+        event.api,
+        defaultHiddenColumns(columnStateNamespace),
+      );
+      if (hiddenColumns.length > 0) {
+        event.api.setColumnsVisible(hiddenColumns, false);
+      }
       event.api.autoSizeColumns(
-        ["name", "number", "accountCategoryName"],
+        creditCardOnly ? ["name", "number"] : ["name", "number", "accountCategoryName"],
         false,
       );
     }
@@ -431,8 +473,18 @@ export function AccountGrid() {
 
   return (
     <div className="space-y-4">
+      {creditCardOnly ? (
+        <SyncAccountLogosButton
+          onSynced={() => {
+            setLogoVersion((value) => value + 1);
+            gridRef.current?.api?.refreshCells({ columns: ["name"], force: true });
+          }}
+        />
+      ) : null}
       <div className="gradient-hero rounded-2xl p-5 shadow-lg shadow-[var(--accent)]/20">
-        <p className="text-sm font-medium text-white/80">Total balance</p>
+        <p className="text-sm font-medium text-white/80">
+          {creditCardOnly ? "Total card balance" : "Total balance"}
+        </p>
         {loading ? (
           <div className="mt-2 h-9 w-36 animate-pulse rounded-lg bg-white/20" />
         ) : (
@@ -443,11 +495,12 @@ export function AccountGrid() {
         {!loading && totalLimit > 0 ? (
           <p className="mt-2 text-xs text-white/70">
             {formatCurrency(totalLimit)} total credit limit · {rowData.length}{" "}
-            account{rowData.length === 1 ? "" : "s"}
+            {rowData.length === 1 ? entityLabel : entityLabelPlural}
           </p>
         ) : !loading ? (
           <p className="mt-2 text-xs text-white/70">
-            {rowData.length} account{rowData.length === 1 ? "" : "s"}
+            {rowData.length}{" "}
+            {rowData.length === 1 ? entityLabel : entityLabelPlural}
           </p>
         ) : null}
       </div>
@@ -472,13 +525,17 @@ export function AccountGrid() {
               type="search"
               value={quickFilter}
               onChange={(e) => setQuickFilter(e.target.value)}
-              placeholder="Search all columns…"
-              aria-label="Search accounts"
+              placeholder={`Search all columns…`}
+              aria-label={`Search ${entityLabelPlural}`}
             />
           </div>
 
           <div className="account-grid-toolbar-actions">
-            <ColumnPicker gridApi={gridApi} />
+            <ColumnPicker
+              gridApi={gridApi}
+              columnStateNamespace={columnStateNamespace}
+              creditCardOnly={creditCardOnly}
+            />
             <button
               type="button"
               onClick={() => void handleSave()}
@@ -511,10 +568,21 @@ export function AccountGrid() {
           </div>
 
           <p className="account-grid-meta">
-            {rowData.length} accounts
+            {rowData.length} {entityLabelPlural}
             {pendingCount > 0 ? ` · ${pendingCount} unsaved` : ""}
           </p>
         </div>
+
+        <GridActiveFilters
+          gridApi={gridApi}
+          quickFilter={quickFilter}
+          onQuickFilterChange={setQuickFilter}
+          filterRevision={filterRevision}
+          onFiltersCleared={() => {
+            setFilterRevision((revision) => revision + 1);
+            refreshPinnedTotals();
+          }}
+        />
 
         <div className="account-grid-viewport">
           <AgGridReact<AccountGridRow>
@@ -527,7 +595,10 @@ export function AccountGrid() {
             getRowClass={getRowClass}
             onCellValueChanged={onCellValueChanged}
             onGridReady={onGridReady}
-            onFilterChanged={() => refreshPinnedTotals()}
+            onFilterChanged={() => {
+              setFilterRevision((revision) => revision + 1);
+              refreshPinnedTotals();
+            }}
             onColumnVisible={scheduleColumnStateSave}
             onColumnMoved={scheduleColumnStateSave}
             onColumnResized={scheduleColumnStateSave}

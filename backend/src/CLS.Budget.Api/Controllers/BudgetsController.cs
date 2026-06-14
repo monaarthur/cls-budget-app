@@ -1,12 +1,15 @@
+using CLS.Budget.Api.Auth;
 using CLS.Budget.Application.Abstractions.Services;
 using CLS.Budget.Application.Budgets.Dtos;
 using CLS.Budget.Application.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CLS.Budget.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/[controller]")]
+[Authorize(Policy = AuthorizationPolicies.TenantMember)]
 public class BudgetsController(IBudgetService budgetService) : ControllerBase
 {
     [HttpGet]
@@ -96,6 +99,7 @@ public class BudgetsController(IBudgetService budgetService) : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Policy = AuthorizationPolicies.TenantOwner)]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {

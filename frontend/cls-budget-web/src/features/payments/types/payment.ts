@@ -7,9 +7,11 @@ export interface PaymentResponse {
   budgetPaymentStatusId: number;
   budgetPaymentStatusName: string;
   isCleared: boolean;
-  paymentDate: string;
+  paymentDate: string | null;
   clearedDate: string | null;
   paymentSourceId: number | null;
+  incomeSourceId?: number | null;
+  incomeSourceName?: string | null;
 }
 
 export interface BudgetPaymentStatusResponse {
@@ -31,9 +33,10 @@ export interface CreatePaymentRequest {
   amount: number;
   budgetPaymentStatusId: number;
   isCleared: boolean;
-  paymentDate: string;
+  paymentDate: string | null;
   clearedDate?: string | null;
   paymentSourceId?: number | null;
+  incomeSourceId?: number | null;
 }
 
 export type UpdatePaymentRequest = CreatePaymentRequest;

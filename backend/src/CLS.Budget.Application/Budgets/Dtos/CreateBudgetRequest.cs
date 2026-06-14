@@ -6,4 +6,6 @@ public sealed class CreateBudgetRequest
     public DateTime StartPeriod { get; init; }
     public DateTime EndPeriod { get; init; }
     public int BudgetTemplateId { get; init; }
+    public string? Notes { get; init; }
+    public int? PayScheduleId { get; init; }
 }

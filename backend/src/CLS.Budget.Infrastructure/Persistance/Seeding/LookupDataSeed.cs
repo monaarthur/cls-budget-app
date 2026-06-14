@@ -1,3 +1,4 @@
+using CLS.Budget.Domain;
 using CLS.Budget.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +11,8 @@ namespace CLS.Budget.Infrastructure.Persistance.Seeding;
 public static class LookupDataSeed
 {
     public const int DefaultBudgetTemplateId = 1;
+    public const int DefaultIncomeSourceId = 1;
+    public const int DefaultPayScheduleId = 1;
 
     public static void Apply(ModelBuilder modelBuilder)
     {
@@ -17,6 +20,9 @@ public static class LookupDataSeed
         modelBuilder.Entity<BudgetTemplate>().HasData(GetBudgetTemplates());
         modelBuilder.Entity<BudgetPaymentStatus>().HasData(GetBudgetPaymentStatuses());
         modelBuilder.Entity<PaymentSource>().HasData(GetPaymentSources());
+        modelBuilder.Entity<PayFrequencyType>().HasData(GetPayFrequencyTypes());
+        modelBuilder.Entity<IncomeSource>().HasData(GetIncomeSources());
+        modelBuilder.Entity<PaySchedule>().HasData(GetPaySchedules());
     }
 
     public static IEnumerable<AccountCategory> GetAccountCategories() =>
@@ -104,6 +110,66 @@ public static class LookupDataSeed
             PaymentSourceId = 3,
             Name = "AE",
             Description = "Alternate / American Express funding account"
+        }
+    ];
+
+    public static IEnumerable<PayFrequencyType> GetPayFrequencyTypes() =>
+    [
+        new PayFrequencyType
+        {
+            PayFrequencyTypeId = PayFrequencyTypeIds.Weekly,
+            Name = "Weekly",
+            Description = "Paid every 7 days on a fixed weekday"
+        },
+        new PayFrequencyType
+        {
+            PayFrequencyTypeId = PayFrequencyTypeIds.BiWeekly,
+            Name = "BiWeekly",
+            Description = "Paid every 14 days on a fixed weekday"
+        },
+        new PayFrequencyType
+        {
+            PayFrequencyTypeId = PayFrequencyTypeIds.SemiMonthly,
+            Name = "SemiMonthly",
+            Description = "Paid twice per month on fixed calendar days"
+        }
+    ];
+
+    public static IEnumerable<IncomeSource> GetIncomeSources() =>
+    [
+        new IncomeSource
+        {
+            IncomeSourceId = DefaultIncomeSourceId,
+            Name = "Job Income",
+            IsActive = true
+        },
+        new IncomeSource
+        {
+            IncomeSourceId = 2,
+            Name = "Credit Cards",
+            IsActive = true
+        },
+        new IncomeSource
+        {
+            IncomeSourceId = 3,
+            Name = "Business Income",
+            IsActive = true
+        }
+    ];
+
+    public static IEnumerable<PaySchedule> GetPaySchedules() =>
+    [
+        new PaySchedule
+        {
+            PayScheduleId = DefaultPayScheduleId,
+            TenantId = SeedTenant.DefaultTenantId,
+            IncomeSourceId = DefaultIncomeSourceId,
+            PayFrequencyTypeId = PayFrequencyTypeIds.SemiMonthly,
+            Name = "Twice monthly (1st & 15th)",
+            SemiMonthlyDay1 = 1,
+            SemiMonthlyDay2 = 15,
+            IsDefault = true,
+            IsActive = true
         }
     ];
 }

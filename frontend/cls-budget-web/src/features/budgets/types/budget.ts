@@ -4,7 +4,9 @@ export interface BudgetResponse {
   startPeriod: string;
   endPeriod: string;
   budgetTemplateId: number;
+  notes?: string | null;
   accountIds: number[];
+  payScheduleId?: number | null;
 }
 
 export interface CreateBudgetRequest {
@@ -12,6 +14,7 @@ export interface CreateBudgetRequest {
   startPeriod: string;
   endPeriod: string;
   budgetTemplateId: number;
+  notes?: string | null;
 }
 
 export interface UpdateBudgetRequest {
@@ -19,7 +22,9 @@ export interface UpdateBudgetRequest {
   startPeriod: string;
   endPeriod: string;
   budgetTemplateId: number;
+  notes?: string | null;
   accountIds?: number[] | null;
+  payScheduleId?: number | null;
 }
 
 export interface CopyBudgetRequest {

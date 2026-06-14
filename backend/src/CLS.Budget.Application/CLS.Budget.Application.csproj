@@ -16,4 +16,8 @@
     <ProjectReference Include="..\CLS.Budget.Domain\CLS.Budget.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="CLS.Budget.UnitTests" />
+  </ItemGroup>
+
 </Project>
