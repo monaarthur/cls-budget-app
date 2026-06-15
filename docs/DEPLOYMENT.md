@@ -41,23 +41,41 @@ Npgsql requires SSL for Supabase:
 Host=db.<project-ref>.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=<your-password>;SSL Mode=Require;Trust Server Certificate=true
 ```
 
-### Run migrations
+### Run migrations locally
 
-From PowerShell:
-
-```powershell
-cd c:\Repos\cls-budget-app\backend
-$env:ConnectionStrings__BudgetDatabase = "<supabase-connection-string>"
-dotnet ef database update --project src/CLS.Budget.Migration --startup-project src/CLS.Budget.Api
-```
-
-Or use the helper script:
+From the repo root, use the helper script (recommended):
 
 ```powershell
 .\scripts\migrate-supabase.ps1 -ConnectionString "<supabase-connection-string>"
 ```
 
+Or run EF directly from the `backend` directory:
+
+```powershell
+cd c:\Repos\cls-budget-app\backend
+dotnet ef database update `
+  --project src/CLS.Budget.Migration `
+  --startup-project src/CLS.Budget.Migration `
+  --connection "<supabase-connection-string>"
+```
+
+Use `--startup-project src/CLS.Budget.Migration` (not the Api project) and pass the Supabase connection string via `--connection`.
+
 Store the same connection string in Azure App Service (next section). Do **not** commit it to GitHub.
+
+### GitHub Actions migrations
+
+Migrations run automatically via `.github/workflows/migrate-database.yml` when changes under `backend/src/CLS.Budget.Migration/**` are pushed to `main`. You can also trigger the workflow manually from the **Actions** tab (`workflow_dispatch`).
+
+**Repository secret (required):**
+
+| Secret | Description |
+|--------|-------------|
+| `SUPABASE_CONNECTION_STRING` | Direct Supabase PostgreSQL connection string (same format as above) |
+
+**Deploy order:** Run database migrations **before** deploying the API. If a push changes both migrations and API code, the migration workflow and `deploy-api.yml` may run in parallel — verify migrations succeeded in **Actions** before relying on new schema in production, or deploy migrations first (push migration-only commit, then API changes).
+
+**Verify:** After a successful workflow run, confirm in Supabase **Table Editor** or **Database → Migrations** that the latest EF migration is applied. Re-run locally with the helper script only if you need to apply pending migrations to another database.
 
 ---
 

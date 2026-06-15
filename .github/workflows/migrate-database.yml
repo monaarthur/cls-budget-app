@@ -1,0 +1,35 @@
+name: Migrate Supabase Database
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/src/CLS.Budget.Migration/**"
+      - ".github/workflows/migrate-database.yml"
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: "9.0.x"
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dotnet tools
+        run: dotnet tool restore
+
+      - name: Restore Migration project
+        run: dotnet restore src/CLS.Budget.Migration/CLS.Budget.Migration.csproj
+
+      - name: Apply EF migrations
+        run: dotnet ef database update --project src/CLS.Budget.Migration --startup-project src/CLS.Budget.Migration --connection "${{ secrets.SUPABASE_CONNECTION_STRING }}"
