@@ -35,11 +35,26 @@ git push -u origin main --force
 
 ### Connection string format
 
-Npgsql requires SSL for Supabase:
+Npgsql requires **key=value** format with SSL. Do **not** paste the `postgresql://` URI from Supabase — EF/Npgsql will reject it with `Format of the initialization string does not conform to specification`.
+
+**Use this format (direct connection, port 5432):**
 
 ```
-Host=db.<project-ref>.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=<your-password>;SSL Mode=Require;Trust Server Certificate=true
+Host=db.<project-ref>.supabase.co;Port=5432;Database=postgres;Username=postgres.<project-ref>;Password=<your-password>;SSL Mode=Require;Trust Server Certificate=true
 ```
+
+| Supabase shows | Use in GitHub secret? |
+|----------------|----------------------|
+| `postgresql://postgres.xxx:password@db.xxx.supabase.co:5432/postgres` | **No** — convert to `Host=...` format below |
+| Direct connection → .NET / Npgsql | **Yes** — if it starts with `Host=` |
+
+**Example** (replace password and project ref):
+
+```
+Host=db.vbycplizeylhcraildxq.supabase.co;Port=5432;Database=postgres;Username=postgres.vbycplizeylhcraildxq;Password=YOUR_PASSWORD;SSL Mode=Require;Trust Server Certificate=true
+```
+
+When saving the GitHub secret, paste the value **without** surrounding quotes.
 
 ### Run migrations locally
 
@@ -183,6 +198,7 @@ Add your Vercel URL to Azure `Cors__AllowedOrigins__0` (see step 3). Restart the
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
+| `Format of the initialization string does not conform to specification` | GitHub secret is `postgresql://` URI or has extra quotes | Use `Host=...;Port=...` Npgsql format; no quotes around secret value |
 | CORS error in browser | Vercel origin not in `Cors__AllowedOrigins` | Add origin in Azure settings |
 | API won't start | Missing `Jwt__SigningKey` when auth enabled | Set signing key in App Service |
 | DB connection failed | Wrong Supabase string or missing SSL | Use SSL connection string from step 2 |

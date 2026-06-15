@@ -31,5 +31,24 @@ jobs:
       - name: Restore Migration project
         run: dotnet restore src/CLS.Budget.Migration/CLS.Budget.Migration.csproj
 
+      - name: Validate connection string format
+        env:
+          SUPABASE_CONNECTION_STRING: ${{ secrets.SUPABASE_CONNECTION_STRING }}
+        run: |
+          if [ -z "$SUPABASE_CONNECTION_STRING" ]; then
+            echo "::error::SUPABASE_CONNECTION_STRING secret is not set."
+            exit 1
+          fi
+          if [[ "$SUPABASE_CONNECTION_STRING" == postgresql://* ]] || [[ "$SUPABASE_CONNECTION_STRING" == postgres://* ]]; then
+            echo "::error::Use Npgsql key=value format (Host=...;Port=...), not postgresql:// URI. See docs/DEPLOYMENT.md"
+            exit 1
+          fi
+          if [[ ! "$SUPABASE_CONNECTION_STRING" == Host=* ]]; then
+            echo "::error::Connection string must start with Host=. Do not wrap the value in quotes when saving the secret."
+            exit 1
+          fi
+
       - name: Apply EF migrations
-        run: dotnet ef database update --project src/CLS.Budget.Migration --startup-project src/CLS.Budget.Migration --connection "${{ secrets.SUPABASE_CONNECTION_STRING }}"
+        env:
+          SUPABASE_CONNECTION_STRING: ${{ secrets.SUPABASE_CONNECTION_STRING }}
+        run: dotnet ef database update --project src/CLS.Budget.Migration --startup-project src/CLS.Budget.Migration --connection "$SUPABASE_CONNECTION_STRING"
