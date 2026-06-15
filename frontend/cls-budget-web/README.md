@@ -43,6 +43,10 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The easiest way to deploy the Next.js frontend is [Vercel](https://vercel.com):
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Import the GitHub repo `monaarthur/cls-budget-app`.
+2. Set **Root Directory** to `frontend/cls-budget-web`.
+3. Add environment variables from `.env.example` (use your production API URL).
+
+See **[docs/DEPLOYMENT.md](../../docs/DEPLOYMENT.md)** for the full multi-platform guide (Vercel + Azure + Supabase).

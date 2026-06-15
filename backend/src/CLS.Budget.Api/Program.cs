@@ -131,6 +131,14 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+var productionCorsOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>()
+    ?.Where(origin => !string.IsNullOrWhiteSpace(origin))
+    .Select(origin => origin.Trim())
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToArray() ?? [];
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendDev", policy =>
@@ -141,6 +149,16 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
+
+    if (productionCorsOrigins.Length > 0)
+    {
+        options.AddPolicy("FrontendProduction", policy =>
+        {
+            policy.WithOrigins(productionCorsOrigins)
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        });
+    }
 });
 
 var app = builder.Build();
@@ -154,6 +172,11 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseHttpsRedirection();
+
+    if (productionCorsOrigins.Length > 0)
+    {
+        app.UseCors("FrontendProduction");
+    }
 }
 
 app.UseAuthentication();

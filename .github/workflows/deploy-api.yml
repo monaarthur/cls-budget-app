@@ -1,0 +1,39 @@
+name: Deploy API to Azure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-api.yml"
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: "9.0.x"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore backend/src/CLS.Budget.Api/CLS.Budget.Api.csproj
+
+      - name: Build
+        run: dotnet build backend/src/CLS.Budget.Api/CLS.Budget.Api.csproj --configuration Release --no-restore
+
+      - name: Publish
+        run: dotnet publish backend/src/CLS.Budget.Api/CLS.Budget.Api.csproj --configuration Release --output ./publish
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./publish
