@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "sync:logos": "node scripts/sync-account-logos.mjs"
+    "sync:logos": "node scripts/sync-account-logos.mjs",
+    "deploy:vercel": "vercel deploy --prod"
   },
   "dependencies": {
     "ag-grid-community": "^35.3.0",
