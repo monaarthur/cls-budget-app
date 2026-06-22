@@ -11,6 +11,7 @@
     <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.11" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="9.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.11">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -21,6 +22,12 @@
   <ItemGroup>
     <ProjectReference Include="..\CLS.Budget.Application\CLS.Budget.Application.csproj" />
     <ProjectReference Include="..\CLS.Budget.Infrastructure\CLS.Budget.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+    <Content Update="appsettings.Production.json.example" CopyToPublishDirectory="Never" />
+    <Content Update="appsettings.Development.json.example" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
 </Project>

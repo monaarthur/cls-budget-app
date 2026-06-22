@@ -14,6 +14,8 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Host.UseWindowsService();
+
 builder.Services.AddControllers()
     .ConfigureApiBehaviorOptions(options =>
     {

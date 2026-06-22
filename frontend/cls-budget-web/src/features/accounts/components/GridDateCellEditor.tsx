@@ -14,41 +14,62 @@ import {
   toDateInputValue,
 } from "@/features/accounts/utils/accountMapper";
 
+function readIsoFromEditorParams(props: ICellEditorParams): string | null {
+  const field = props.colDef.field;
+  const fromData =
+    field && props.node.data
+      ? (props.node.data as Record<string, unknown>)[field]
+      : null;
+
+  if (typeof fromData === "string") return fromData;
+
+  if (props.value instanceof Date && Number.isFinite(props.value.getTime())) {
+    return new Date(
+      Date.UTC(
+        props.value.getUTCFullYear(),
+        props.value.getUTCMonth(),
+        props.value.getUTCDate(),
+      ),
+    ).toISOString();
+  }
+
+  if (typeof props.value === "string") return props.value;
+
+  return null;
+}
+
 export const GridDateCellEditor = forwardRef<
   { getValue: () => string },
   ICellEditorParams
 >((props, ref) => {
   const textRef = useRef<HTMLInputElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
-  const [value, setValue] = useState("");
+  const initialDisplay = formatDateForGrid(readIsoFromEditorParams(props));
+  const valueRef = useRef(initialDisplay);
+  const [value, setValue] = useState(initialDisplay);
+
+  const setEditorValue = (next: string) => {
+    valueRef.current = next;
+    setValue(next);
+  };
 
   useEffect(() => {
-    const field = props.colDef.field;
-    const raw =
-      field && props.node.data
-        ? (props.node.data as Record<string, unknown>)[field]
-        : props.value;
-    const iso = typeof raw === "string" ? raw : null;
-    setValue(formatDateForGrid(iso));
     textRef.current?.focus();
     textRef.current?.select();
-  }, [props.colDef.field, props.node.data, props.value]);
+  }, []);
 
-  useImperativeHandle(ref, () => ({
-    getValue: () => value.trim(),
-  }));
+  useImperativeHandle(
+    ref,
+    () => ({
+      getValue: () => valueRef.current.trim(),
+    }),
+    [],
+  );
 
   const openCalendar = () => {
-    const field = props.colDef.field;
-    const raw =
-      field && props.node.data
-        ? ((props.node.data as Record<string, unknown>)[field] as
-            | string
-            | null
-            | undefined)
-        : null;
+    const iso = readIsoFromEditorParams(props);
     if (dateRef.current) {
-      dateRef.current.value = toDateInputValue(raw ?? null);
+      dateRef.current.value = toDateInputValue(iso);
       dateRef.current.showPicker?.();
     }
   };
@@ -56,7 +77,7 @@ export const GridDateCellEditor = forwardRef<
   const onCalendarChange = (next: string) => {
     if (!next) return;
     const [year, month, day] = next.split("-");
-    setValue(`${month}/${day}/${year}`);
+    setEditorValue(`${month}/${day}/${year}`);
     textRef.current?.focus();
   };
 
@@ -68,7 +89,7 @@ export const GridDateCellEditor = forwardRef<
         className="grid-date-cell-editor-input"
         value={value}
         placeholder="MM/DD/YYYY"
-        onChange={(event) => setValue(event.target.value)}
+        onChange={(event) => setEditorValue(event.target.value)}
         onKeyDown={(event) => event.stopPropagation()}
       />
       <button

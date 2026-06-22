@@ -1,4 +1,5 @@
 import { compareAccountCategoryIds } from "@/features/accounts/data/accountCategories";
+import { normalizeGridDateIso } from "@/features/accounts/utils/accountMapper";
 import { isPaymentDateSelected } from "@/features/budgets/utils/budgetPaymentSummary";
 import type { AccountResponse } from "@/features/accounts/types/account";
 import type { PaymentResponse, UpdatePaymentRequest } from "@/features/payments/types/payment";
@@ -116,7 +117,18 @@ export function needsPaymentSourceUpdate(
   return row.paymentMade > 0 && row.paymentSourceId == null;
 }
 
-export function toUpdatePaymentRequest(row: BudgetGridRow): UpdatePaymentRequest {
+export function toUpdatePaymentRequest(
+  row: BudgetGridRow,
+  budgetStartPeriod?: string,
+): UpdatePaymentRequest {
+  const paymentDate =
+    normalizeGridDateIso(row.paymentDate) ??
+    (budgetStartPeriod ? normalizeGridDateIso(budgetStartPeriod) : null);
+
+  if (!paymentDate) {
+    throw new Error("Payment date is required before saving.");
+  }
+
   return {
     budgetId: row.budgetId,
     accountId: row.accountId,
@@ -124,8 +136,8 @@ export function toUpdatePaymentRequest(row: BudgetGridRow): UpdatePaymentRequest
     amount: row.amount,
     budgetPaymentStatusId: row.budgetPaymentStatusId,
     isCleared: row.isCleared,
-    paymentDate: row.paymentDate,
-    clearedDate: row.clearedDate,
+    paymentDate,
+    clearedDate: normalizeGridDateIso(row.clearedDate),
     paymentSourceId: row.paymentSourceId,
     incomeSourceId: row.incomeSourceId ?? null,
   };

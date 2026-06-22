@@ -34,6 +34,10 @@ export interface BudgetPaymentPeriodSummaries {
   noDateCleared: PaymentClearedSummary;
 }
 
+export type PayPeriodFilter =
+  | { type: "period"; index: number }
+  | { type: "no-date" };
+
 function emptySummary(): PaymentHalfSummary {
   return { pending: 0, paid: 0, scheduled: 0 };
 }
@@ -145,6 +149,28 @@ export function getPaymentHalfSummaryTotal(
   summary: PaymentHalfSummary,
 ): number {
   return summary.pending + summary.paid + summary.scheduled;
+}
+
+export function rowMatchesPayPeriodFilter(
+  row: BudgetGridRow,
+  filter: PayPeriodFilter | null,
+  periods: ReadonlyArray<{ periodStart: string; periodEnd: string }>,
+  budgetStartPeriod: string,
+): boolean {
+  if (!filter) return true;
+
+  if (filter.type === "no-date") {
+    return !isPaymentDateSelected(row.paymentDate);
+  }
+
+  if (!isPaymentDateSelected(row.paymentDate)) return false;
+
+  const periodIndex = resolvePaymentPayPeriodIndex(
+    row.paymentDate!,
+    periods,
+    budgetStartPeriod,
+  );
+  return periodIndex === filter.index;
 }
 
 function formatPeriodTitle(boundary: PayPeriodBoundary): string {

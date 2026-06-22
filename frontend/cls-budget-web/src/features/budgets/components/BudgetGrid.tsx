@@ -5,18 +5,21 @@ import { AgGridReact } from "ag-grid-react";
 import {
   AllCommunityModule,
   ModuleRegistry,
+  type CellEditingStartedEvent,
+  type CellEditingStoppedEvent,
   type CellValueChangedEvent,
   type ColDef,
   type GridApi,
   type GridReadyEvent,
   type ICellRendererParams,
+  type IRowNode,
   type RowClassParams,
   type ValueFormatterParams,
   type ValueGetterParams,
   type ValueParserParams,
   type ValueSetterParams,
 } from "ag-grid-community";
-import { Plus, RefreshCw, RotateCcw, Save, Search, Settings2 } from "lucide-react";
+import { Plus, RefreshCw, RotateCcw, Save, Search, Settings2, X } from "lucide-react";
 import { accountsApi } from "@/features/accounts/api/accountsApi";
 import {
   getAccountCategoryName,
@@ -25,9 +28,11 @@ import {
 import {
   formatDateForGrid,
   formatPaymentDay,
+  normalizeGridDateIso,
+  parseAndNormalizeGridDate,
   toUpdateAccountRequest,
 } from "@/features/accounts/utils/accountMapper";
-import { createEditableDateColDef } from "@/features/accounts/components/gridDateColumn";
+import { createEditableDateColDef, createEditableDateTextColDef } from "@/features/accounts/components/gridDateColumn";
 import type { AccountResponse } from "@/features/accounts/types/account";
 import { accountGridTheme } from "@/features/accounts/components/accountGridTheme";
 import {
@@ -55,6 +60,8 @@ import { parseBudgetNotes, serializeBudgetNotes } from "@/features/budgets/utils
 import {
   summarizePaymentsByPayPeriod,
   getPaymentHalfSummaryTotal,
+  rowMatchesPayPeriodFilter,
+  type PayPeriodFilter,
   type PaymentClearedSummary,
   type PaymentHalfSummary,
 } from "@/features/budgets/utils/budgetPaymentSummary";
@@ -136,15 +143,30 @@ function PaymentHalfPanel({
   title,
   summary,
   cleared,
+  isActive = false,
+  onSelect,
 }: {
   title: string;
   summary: PaymentHalfSummary;
   cleared: PaymentClearedSummary;
+  isActive?: boolean;
+  onSelect?: () => void;
 }) {
   const total = getPaymentHalfSummaryTotal(summary);
 
   return (
-    <div className="rounded-xl bg-white/10 p-4 backdrop-blur-sm">
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`w-full rounded-xl bg-white/10 p-4 text-left backdrop-blur-sm transition ${
+        onSelect ? "cursor-pointer hover:bg-white/15" : ""
+      } ${
+        isActive
+          ? "ring-2 ring-white/80 ring-offset-2 ring-offset-[var(--link)]"
+          : ""
+      }`}
+      aria-pressed={isActive}
+    >
       <p className="text-sm font-semibold text-white">{title}</p>
       <dl className="mt-3 space-y-2 text-sm">
         <div className="flex items-center justify-between gap-4">
@@ -184,7 +206,7 @@ function PaymentHalfPanel({
           {cleared.total === 1 ? "payment" : "payments"}
         </p>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -246,6 +268,12 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
     Record<string, unknown>[]
   >([]);
   const [summaryTick, setSummaryTick] = useState(0);
+  const [payPeriodFilter, setPayPeriodFilter] = useState<PayPeriodFilter | null>(
+    null,
+  );
+  const payPeriodFilterRef = useRef<PayPeriodFilter | null>(null);
+  const dateEditSnapshotRef = useRef<Map<string, string | null>>(new Map());
+  const [dirtyRevision, setDirtyRevision] = useState(0);
   const [status, setStatus] = useState<{
     type: "success" | "error";
     message: string;
@@ -341,6 +369,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       dirtyIds.current.clear();
       dirtyAccountIds.current.clear();
       setPendingCount(0);
+      setPayPeriodFilter(null);
     } catch (err) {
       const message =
         err instanceof ApiError
@@ -377,6 +406,61 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         paymentPeriodSummaries: periods,
       };
     }, [rowData, summaryTick, budgetStartPeriod, budgetEndPeriod, paySchedule]);
+
+  const payPeriodPeriodsRef = useRef<
+    ReadonlyArray<{ periodStart: string; periodEnd: string }>
+  >([]);
+  const budgetStartPeriodRef = useRef(budgetStartPeriod);
+
+  useEffect(() => {
+    payPeriodFilterRef.current = payPeriodFilter;
+    budgetStartPeriodRef.current = budgetStartPeriod;
+  }, [payPeriodFilter, budgetStartPeriod]);
+
+  useEffect(() => {
+    payPeriodPeriodsRef.current = paymentPeriodSummaries?.periods ?? [];
+  }, [paymentPeriodSummaries]);
+
+  useEffect(() => {
+    gridApi?.onFilterChanged();
+  }, [payPeriodFilter, gridApi]);
+
+  const payPeriodFilterLabel = useMemo(() => {
+    if (!payPeriodFilter || !paymentPeriodSummaries) return null;
+    if (payPeriodFilter.type === "no-date") return "No Payment";
+    return paymentPeriodSummaries.periods[payPeriodFilter.index]?.label ?? null;
+  }, [payPeriodFilter, paymentPeriodSummaries]);
+
+  const handlePayPeriodFilterSelect = useCallback((filter: PayPeriodFilter) => {
+    setPayPeriodFilter((current) => {
+      if (
+        current?.type === filter.type &&
+        (filter.type === "no-date" ||
+          (current.type === "period" &&
+            filter.type === "period" &&
+            current.index === filter.index))
+      ) {
+        return null;
+      }
+      return filter;
+    });
+    setFilterRevision((revision) => revision + 1);
+  }, []);
+
+  const isExternalFilterPresent = useCallback(
+    () => payPeriodFilterRef.current != null,
+    [],
+  );
+
+  const doesExternalFilterPass = useCallback((node: IRowNode<BudgetGridRow>) => {
+    if (!node.data || isPinnedTotalRow(node)) return true;
+    return rowMatchesPayPeriodFilter(
+      node.data,
+      payPeriodFilterRef.current,
+      payPeriodPeriodsRef.current,
+      budgetStartPeriodRef.current,
+    );
+  }, []);
 
   const includedAccountIds = useMemo(
     () => new Set(budgetAccountIds),
@@ -752,7 +836,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         width: 110,
         cellClass: "ag-cell-center",
       },
-      createEditableDateColDef<BudgetGridRow>("paymentDate", "Payment date", {
+      createEditableDateTextColDef<BudgetGridRow>("paymentDate", "Payment date", {
         editable: editableUnlessPinned(),
         minWidth: 130,
       }),
@@ -1013,43 +1097,121 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
 
       return getBudgetPaymentRowClass(params.data);
     },
-    [pendingCount],
+    [pendingCount, dirtyRevision],
   );
 
-  const onCellValueChanged = useCallback(
-    (event: CellValueChangedEvent<BudgetGridRow>) => {
-      if (!event.data || event.oldValue === event.newValue) return;
-
-      const changedColId = event.column.getColId();
-
-      if (changedColId === "accountPaymentDay") {
-        dirtyAccountIds.current.add(event.data.accountId);
+  const applyCellEdit = useCallback(
+    (data: BudgetGridRow, colId: string, api: GridApi) => {
+      if (colId === "accountPaymentDay") {
+        dirtyAccountIds.current.add(data.accountId);
       } else {
-        dirtyIds.current.add(event.data.budgetPaymentId);
+        dirtyIds.current.add(data.budgetPaymentId);
       }
+
+      setRowData((prev) =>
+        prev.map((row) =>
+          row.budgetPaymentId === data.budgetPaymentId ? { ...data } : row,
+        ),
+      );
 
       setPendingCount(
         dirtyIds.current.size + dirtyAccountIds.current.size,
       );
+      setDirtyRevision((revision) => revision + 1);
       setSummaryTick((tick) => tick + 1);
 
-      if (
-        changedColId === "amount" ||
-        changedColId === "paymentMade" ||
-        changedColId === "paymentSourceId" ||
-        changedColId === "incomeSourceId" ||
-        changedColId === "budgetPaymentStatusName"
-      ) {
-        event.api.refreshCells({
-          rowNodes: [event.node],
-          columns: ["owed", "accountName"],
-        });
+      const node = api.getRowNode(String(data.budgetPaymentId));
+      if (node) {
+        if (
+          colId === "amount" ||
+          colId === "paymentMade" ||
+          colId === "paymentSourceId" ||
+          colId === "incomeSourceId" ||
+          colId === "budgetPaymentStatusName"
+        ) {
+          api.refreshCells({
+            rowNodes: [node],
+            columns: ["owed", "accountName"],
+          });
+        }
+        api.redrawRows({ rowNodes: [node] });
       }
 
-      event.api.redrawRows({ rowNodes: [event.node] });
-      refreshPinnedTotals(event.api);
+      refreshPinnedTotals(api);
     },
     [refreshPinnedTotals],
+  );
+
+  const dateEditKey = (budgetPaymentId: number, colId: string) =>
+    `${budgetPaymentId}:${colId}`;
+
+  const onCellEditingStarted = useCallback(
+    (event: CellEditingStartedEvent<BudgetGridRow>) => {
+      if (!event.data) return;
+
+      const colId = event.column.getColId();
+      if (colId !== "paymentDate" && colId !== "clearedDate") return;
+
+      dateEditSnapshotRef.current.set(
+        dateEditKey(event.data.budgetPaymentId, colId),
+        normalizeGridDateIso(
+          event.data[colId as "paymentDate" | "clearedDate"],
+        ),
+      );
+    },
+    [],
+  );
+
+  const onCellEditingStopped = useCallback(
+    (event: CellEditingStoppedEvent<BudgetGridRow>) => {
+      if (!event.data) return;
+
+      const colId = event.column.getColId();
+      if (colId !== "paymentDate" && colId !== "clearedDate") return;
+
+      const field = colId as "paymentDate" | "clearedDate";
+      const key = dateEditKey(event.data.budgetPaymentId, colId);
+      const before =
+        dateEditSnapshotRef.current.get(key) ??
+        normalizeGridDateIso(event.oldValue);
+      dateEditSnapshotRef.current.delete(key);
+
+      const parsedFromEditor = parseAndNormalizeGridDate(event.value);
+      if (parsedFromEditor != null) {
+        event.data[field] = parsedFromEditor;
+      }
+
+      const after = normalizeGridDateIso(event.data[field]);
+      if (before === after) return;
+
+      applyCellEdit(event.data, colId, event.api);
+    },
+    [applyCellEdit],
+  );
+
+  const onCellValueChanged = useCallback(
+    (event: CellValueChangedEvent<BudgetGridRow>) => {
+      if (!event.data) return;
+
+      const changedColId = event.column.getColId();
+
+      if (
+        changedColId === "paymentDate" ||
+        changedColId === "clearedDate"
+      ) {
+        if (
+          normalizeGridDateIso(event.oldValue) ===
+          normalizeGridDateIso(event.newValue)
+        ) {
+          return;
+        }
+      } else if (event.oldValue === event.newValue) {
+        return;
+      }
+
+      applyCellEdit(event.data, changedColId, event.api);
+    },
+    [applyCellEdit],
   );
 
   const handleSave = async () => {
@@ -1064,7 +1226,10 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
     try {
       await Promise.all([
         ...rowsToSave.map((row) =>
-          paymentsApi.update(row.budgetPaymentId, toUpdatePaymentRequest(row)),
+          paymentsApi.update(
+            row.budgetPaymentId,
+            toUpdatePaymentRequest(row, budgetStartPeriod),
+          ),
         ),
         ...accountIdsToSave.map(async (accountId) => {
           const account = accountsByIdRef.current.get(accountId);
@@ -1273,18 +1438,27 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
                 : "lg:grid-cols-3"
             }`}
           >
-            {paymentPeriodSummaries.periods.map((period) => (
+            {paymentPeriodSummaries.periods.map((period, index) => (
               <PaymentHalfPanel
                 key={`${period.periodStart}-${period.periodEnd}`}
                 title={period.label}
                 summary={period.summary}
                 cleared={period.cleared}
+                isActive={
+                  payPeriodFilter?.type === "period" &&
+                  payPeriodFilter.index === index
+                }
+                onSelect={() =>
+                  handlePayPeriodFilterSelect({ type: "period", index })
+                }
               />
             ))}
             <PaymentHalfPanel
               title="No Payment"
               summary={paymentPeriodSummaries.noDate}
               cleared={paymentPeriodSummaries.noDateCleared}
+              isActive={payPeriodFilter?.type === "no-date"}
+              onSelect={() => handlePayPeriodFilterSelect({ type: "no-date" })}
             />
           </div>
         ) : loading ? (
@@ -1398,16 +1572,44 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
           }}
         />
 
+        {payPeriodFilterLabel ? (
+          <div className="account-grid-active-filters">
+            <div className="account-grid-active-filters-list">
+              <span className="account-grid-filter-chip">
+                <span className="account-grid-filter-chip-label">
+                  Pay period: <strong>{payPeriodFilterLabel}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPayPeriodFilter(null);
+                    setFilterRevision((revision) => revision + 1);
+                  }}
+                  className="account-grid-filter-chip-clear"
+                  aria-label="Clear pay period filter"
+                >
+                  <X size={14} aria-hidden />
+                </button>
+              </span>
+            </div>
+          </div>
+        ) : null}
+
         <div className="account-grid-viewport">
           <AgGridReact<BudgetGridRow>
             ref={gridRef}
             theme={accountGridTheme}
             rowData={rowData}
+            getRowId={(params) => String(params.data.budgetPaymentId)}
             pinnedBottomRowData={pinnedBottomRowData}
             columnDefs={columnDefs}
             defaultColDef={defaultColDef}
             context={gridContext}
             getRowClass={getRowClass}
+            isExternalFilterPresent={isExternalFilterPresent}
+            doesExternalFilterPass={doesExternalFilterPass}
+            onCellEditingStarted={onCellEditingStarted}
+            onCellEditingStopped={onCellEditingStopped}
             onCellValueChanged={onCellValueChanged}
             onGridReady={onGridReady}
             onFilterChanged={() => {
@@ -1438,8 +1640,8 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       </div>
 
       <p className="text-center text-xs text-[var(--muted)] opacity-70">
-        Double-click to edit · Column layout is saved in this browser · Save when
-        done
+        Click a pay-period summary to filter the grid · Double-click to edit ·
+        Column layout is saved in this browser · Save when done
       </p>
 
       {addPaymentOpen ? (

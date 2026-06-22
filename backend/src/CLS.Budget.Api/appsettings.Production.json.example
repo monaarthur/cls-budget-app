@@ -1,0 +1,16 @@
+{
+  "ConnectionStrings": {
+    "BudgetDatabase": "Host=db.<project-ref>.supabase.co;Port=5432;Database=postgres;Username=postgres.<project-ref>;Password=REPLACE_ME;SSL Mode=Require;Trust Server Certificate=true"
+  },
+  "Auth": {
+    "Enabled": true
+  },
+  "Jwt": {
+    "SigningKey": "REPLACE_WITH_32_PLUS_CHARACTER_RANDOM_STRING"
+  },
+  "Cors": {
+    "AllowedOrigins": [
+      "https://your-app.vercel.app"
+    ]
+  }
+}

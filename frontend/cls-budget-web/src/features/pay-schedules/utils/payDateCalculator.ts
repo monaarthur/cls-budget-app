@@ -154,8 +154,8 @@ function getSemiMonthlyHalfMonthBoundaries(
   );
   const splitLabel = formatShortDate(splitDate);
   const period1End =
-    splitDate.getTime() <= end.getTime() ? splitDate : end;
-  const period2Start = addDays(splitDate, 1);
+    splitDate.getTime() <= end.getTime() ? addDays(splitDate, -1) : end;
+  const period2Start = splitDate;
 
   if (period2Start.getTime() > end.getTime()) {
     return [
@@ -163,6 +163,16 @@ function getSemiMonthlyHalfMonthBoundaries(
         periodStart: toUtcDateIso(start),
         periodEnd: toUtcDateIso(end),
         label: `Before ${splitLabel}`,
+      },
+    ];
+  }
+
+  if (period1End.getTime() < start.getTime()) {
+    return [
+      {
+        periodStart: toUtcDateIso(period2Start),
+        periodEnd: toUtcDateIso(end),
+        label: `After ${splitLabel}`,
       },
     ];
   }
@@ -187,13 +197,22 @@ export function resolvePaymentPayPeriodIndex(
   periods: ReadonlyArray<{ periodStart: string; periodEnd: string }>,
   budgetStartPeriod: string,
 ): number {
+  const paymentMs = toUtcDate(paymentDate).getTime();
   const periodIndex = periods.findIndex((period) =>
     paymentDateInPeriod(paymentDate, period.periodStart, period.periodEnd),
   );
-  if (periodIndex >= 0) return periodIndex;
+
+  if (periodIndex >= 0) {
+    const periodEndMs = toUtcDate(periods[periodIndex].periodEnd).getTime();
+    // Payments on a pay-period boundary (e.g. 6/15) belong in the following period.
+    if (paymentMs === periodEndMs && periodIndex < periods.length - 1) {
+      return periodIndex + 1;
+    }
+    return periodIndex;
+  }
+
   if (periods.length === 0) return -1;
 
-  const paymentMs = toUtcDate(paymentDate).getTime();
   const budgetStartMs = toUtcDate(budgetStartPeriod).getTime();
   const firstPeriodStartMs = toUtcDate(periods[0].periodStart).getTime();
 

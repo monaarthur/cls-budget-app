@@ -14,3 +14,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Local Windows Service config (passwords)
+scripts/local-service.appsettings.json
+scripts/local-api.appsettings.json

@@ -95,14 +95,22 @@ public static class PayDateCalculator
 
         var splitDay = Math.Max(schedule.SemiMonthlyDay1.Value, schedule.SemiMonthlyDay2.Value);
         var splitDate = ResolveSemiMonthlyDay(start.Year, start.Month, splitDay);
-        var period1End = splitDate <= end ? splitDate : end;
-        var period2Start = splitDate.AddDays(1);
+        var period1End = splitDate <= end ? splitDate.AddDays(-1) : end;
+        var period2Start = splitDate;
 
         if (period2Start > end)
         {
             return
             [
                 new PayPeriodBoundary(start, end, $"Before {splitDate:M/d}")
+            ];
+        }
+
+        if (period1End < start)
+        {
+            return
+            [
+                new PayPeriodBoundary(period2Start, end, $"After {splitDate:M/d}")
             ];
         }
 

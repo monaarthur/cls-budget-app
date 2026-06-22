@@ -46,9 +46,42 @@ export function toDateInputValue(iso: string | null): string {
 }
 
 function toUtcDateFromIso(iso: string): Date | null {
-  const normalized = iso.includes("T") ? iso : `${iso}T00:00:00.000Z`;
+  const trimmed = iso.trim();
+  if (!trimmed) return null;
+
+  const hasTime = trimmed.includes("T");
+  const hasZone =
+    trimmed.endsWith("Z") || /[+-]\d{2}:\d{2}$/.test(trimmed);
+  const normalized = hasTime
+    ? hasZone
+      ? trimmed
+      : `${trimmed}Z`
+    : `${trimmed}T00:00:00.000Z`;
+
   const date = new Date(normalized);
   return Number.isFinite(date.getTime()) ? date : null;
+}
+
+export function normalizeGridDateIso(value: unknown): string | null {
+  const parsed = parseGridDateValue(value);
+  if (!parsed) return null;
+  const date = toUtcDateFromIso(parsed);
+  if (!date) return null;
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+  ).toISOString();
+}
+
+export function parseAndNormalizeGridDate(
+  rawValue: unknown,
+  fallback?: string | null,
+): string | null {
+  const parsed = parseGridDateValue(rawValue);
+  if (parsed != null) return normalizeGridDateIso(parsed);
+  if (fallback !== undefined) {
+    return normalizeGridDateIso(fallback);
+  }
+  return null;
 }
 
 export function parseGridDate(value: string | null | undefined): string | null {
@@ -61,13 +94,19 @@ export function parseGridDateValue(value: unknown): string | null {
   if (value instanceof Date) {
     if (!Number.isFinite(value.getTime())) return null;
     return new Date(
-      Date.UTC(value.getFullYear(), value.getMonth(), value.getDate()),
+      Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()),
     ).toISOString();
   }
 
   const trimmed = String(value).trim();
   if (!trimmed) return null;
-  if (trimmed.includes("T")) return trimmed;
+  if (trimmed.includes("T")) {
+    const date = toUtcDateFromIso(trimmed);
+    if (!date) return null;
+    return new Date(
+      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+    ).toISOString();
+  }
 
   const slashMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed);
   if (slashMatch) {

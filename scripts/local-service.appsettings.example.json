@@ -1,0 +1,15 @@
+{
+  "ConnectionStrings": {
+    "BudgetDatabase": "Host=localhost;Port=5432;Database=ClsBudget;Username=postgres;Password=REPLACE_WITH_YOUR_PASSWORD"
+  },
+  "Auth": {
+    "Enabled": false
+  },
+  "Urls": "http://localhost:5123",
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  }
+}

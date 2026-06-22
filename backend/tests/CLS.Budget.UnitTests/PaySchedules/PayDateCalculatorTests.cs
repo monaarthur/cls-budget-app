@@ -72,9 +72,9 @@ public class PayDateCalculatorTests
         periods.Should().HaveCount(2);
         periods[0].Label.Should().Be("Before 5/15");
         periods[0].PeriodStart.Should().Be(start);
-        periods[0].PeriodEnd.Should().Be(new DateTime(2026, 5, 15, 0, 0, 0, DateTimeKind.Utc));
+        periods[0].PeriodEnd.Should().Be(new DateTime(2026, 5, 14, 0, 0, 0, DateTimeKind.Utc));
         periods[1].Label.Should().Be("After 5/15");
-        periods[1].PeriodStart.Should().Be(new DateTime(2026, 5, 16, 0, 0, 0, DateTimeKind.Utc));
+        periods[1].PeriodStart.Should().Be(new DateTime(2026, 5, 15, 0, 0, 0, DateTimeKind.Utc));
         periods[1].PeriodEnd.Should().Be(end);
     }
 
@@ -89,9 +89,9 @@ public class PayDateCalculatorTests
 
         periods.Should().HaveCount(2);
         periods[0].Label.Should().Be("Before 6/15");
-        periods[0].PeriodEnd.Should().Be(new DateTime(2026, 6, 15, 0, 0, 0, DateTimeKind.Utc));
+        periods[0].PeriodEnd.Should().Be(new DateTime(2026, 6, 14, 0, 0, 0, DateTimeKind.Utc));
         periods[1].Label.Should().Be("After 6/15");
-        periods[1].PeriodStart.Should().Be(new DateTime(2026, 6, 16, 0, 0, 0, DateTimeKind.Utc));
+        periods[1].PeriodStart.Should().Be(new DateTime(2026, 6, 15, 0, 0, 0, DateTimeKind.Utc));
     }
 
     [Fact]
