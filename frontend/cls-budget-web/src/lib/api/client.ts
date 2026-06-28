@@ -19,14 +19,17 @@ export class ApiError extends Error {
 }
 
 function getBaseUrl(): string {
-  // Browser requests go through the Next.js dev proxy (same origin, no CORS).
+  const configured = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "");
+  if (configured) {
+    return configured;
+  }
+
+  // Local dev: browser requests go through the Next.js proxy (same origin, no CORS).
   if (typeof window !== "undefined") {
     return "";
   }
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5123";
-  return baseUrl.replace(/\/$/, "");
+  return "http://localhost:5123";
 }
 
 const API_UNAVAILABLE_MESSAGE =

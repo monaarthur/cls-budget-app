@@ -152,7 +152,7 @@ export function DashboardHome() {
             {upcomingPayments.map((payment) => (
               <Link
                 key={payment.budgetPaymentId}
-                href={`/budgets/${payment.budgetId}`}
+                href={`/budgets/detail?id=${payment.budgetId}`}
                 className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3 last:border-b-0 hover:bg-black/[0.03]"
               >
                 <div className="min-w-0">

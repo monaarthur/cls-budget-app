@@ -89,7 +89,7 @@ export function AddBudgetForm({ onCreated }: { onCreated: (name: string) => void
       }
 
       onCreated(trimmedName);
-      router.push(`/budgets/${created.budgetId}`);
+      router.push(`/budgets/detail?id=${created.budgetId}`);
     } catch (err) {
       const message =
         err instanceof ApiError

@@ -25,7 +25,7 @@ export function BudgetRow({
     <>
       <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-4 py-3">
         <Link
-          href={`/budgets/${budget.budgetId}`}
+          href={`/budgets/detail?id=${budget.budgetId}`}
           className="min-w-0 truncate font-medium text-[var(--link)] hover:underline"
         >
           {budget.name}

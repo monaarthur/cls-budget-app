@@ -1,14 +1,14 @@
+"use client";
+
 import Link from "next/link";
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { BudgetGrid } from "@/features/budgets/components/BudgetGrid";
 import { TopBar } from "@/components/layout/TopBar";
 
-export default async function BudgetDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const budgetId = Number(id);
+function BudgetDetailContent() {
+  const searchParams = useSearchParams();
+  const budgetId = Number(searchParams.get("id"));
 
   if (!Number.isFinite(budgetId) || budgetId <= 0) {
     return (
@@ -32,5 +32,17 @@ export default async function BudgetDetailPage({
       </div>
       <BudgetGrid budgetId={budgetId} />
     </>
+  );
+}
+
+export default function BudgetDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-8 text-sm text-[var(--muted)]">Loading budget…</div>
+      }
+    >
+      <BudgetDetailContent />
+    </Suspense>
   );
 }
