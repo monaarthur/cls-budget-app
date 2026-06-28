@@ -37,4 +37,4 @@ jobs:
           aws-region: us-east-1
 
       - name: Deploy to S3
-        run: aws s3 sync dist s3://YOUR_BUCKET_NAME --delete
+        run: aws s3 sync dist s3://cls-budget-app-prod --delete
