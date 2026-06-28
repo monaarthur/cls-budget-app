@@ -1,4 +1,4 @@
-name: Deploy Frontend to S3
+name: AWS Deploy React to S3
 
 on:
   workflow_dispatch:
