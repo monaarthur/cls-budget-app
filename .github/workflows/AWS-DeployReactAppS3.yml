@@ -13,7 +13,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: src
+        working-directory: frontend/cls-budget-web
 
     steps:
       - name: Checkout repo
