@@ -24,4 +24,14 @@ public sealed class RefreshTokenRepository(BudgetDbContext dbContext) : IRefresh
         dbContext.RefreshTokens.Update(token);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task RevokeAllActiveForUserAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        await dbContext.RefreshTokens
+            .Where(t => t.UserId == userId && t.RevokedAt == null && t.ExpiresAt > now)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(t => t.RevokedAt, now),
+                cancellationToken);
+    }
 }

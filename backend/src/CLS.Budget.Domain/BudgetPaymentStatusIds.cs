@@ -10,4 +10,5 @@ public static class BudgetPaymentStatusIds
     public const int Paid = 3;
     public const int Failed = 4;
     public const int Overdue = 5;
+    public const int Unassigned = 6;
 }

@@ -57,4 +57,24 @@ public class AuthController(IAuthService authService) : ControllerBase
         var result = await authService.GetCurrentUserAsync(userId, cancellationToken);
         return result.Success ? Ok(result) : NotFound(result);
     }
+
+    [AllowAnonymous]
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword(
+        [FromBody] ForgotPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        await authService.ForgotPasswordAsync(request, cancellationToken);
+        return Ok(ApiResponse<bool>.Ok(true));
+    }
+
+    [AllowAnonymous]
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword(
+        [FromBody] ResetPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await authService.ResetPasswordAsync(request, cancellationToken);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
 }

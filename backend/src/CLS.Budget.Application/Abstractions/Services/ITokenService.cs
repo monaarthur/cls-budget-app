@@ -15,6 +15,9 @@ public interface ITokenService
     /// </summary>
     RefreshTokenResult CreateRefreshToken();
 
+    /// <summary>Creates a short-lived one-time token (e.g. password reset).</summary>
+    RefreshTokenResult CreateOneTimeToken(TimeSpan lifetime);
+
     /// <summary>
     /// Hashes a raw refresh token so it can be matched against the stored hash.
     /// </summary>

@@ -4,5 +4,22 @@
   },
   "Auth": {
     "Enabled": false
+  },
+  "PasswordReset": {
+    "FrontendBaseUrl": "http://localhost:3000",
+    "TokenMinutes": 60
+  },
+  "Admin": {
+    "ApiKey": "local-dev-admin-key-change-me"
+  },
+  "Smtp": {
+    "Enabled": true,
+    "Host": "smtp.gmail.com",
+    "Port": 587,
+    "UseStartTls": true,
+    "Username": "you@gmail.com",
+    "Password": "YOUR_GMAIL_APP_PASSWORD",
+    "FromAddress": "you@gmail.com",
+    "FromDisplayName": "CLS Budget"
   }
 }

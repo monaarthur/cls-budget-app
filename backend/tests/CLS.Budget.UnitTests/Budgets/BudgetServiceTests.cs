@@ -90,6 +90,69 @@ public class BudgetServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_SkipsDeletedAccounts_WhenTemplateReferencesMissingIds()
+    {
+        _templateRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new BudgetTemplate
+            {
+                BudgetTemplateId = 1,
+                Name = "Default",
+                AccountIds = "[1,19,2]"
+            });
+
+        _accountRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyList<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<int> ids, CancellationToken _) =>
+            [
+                new Account
+                {
+                    AccountId = 1,
+                    Name = "A",
+                    Number = "1",
+                    MonthlyPayment = 100m,
+                    AccountOpenDate = DateTime.UtcNow,
+                    Phone = "p",
+                    Email = "e",
+                    Url = "u",
+                    AccountCategoryId = 1
+                },
+                new Account
+                {
+                    AccountId = 2,
+                    Name = "B",
+                    Number = "2",
+                    MonthlyPayment = 50m,
+                    AccountOpenDate = DateTime.UtcNow,
+                    Phone = "p",
+                    Email = "e",
+                    Url = "u",
+                    AccountCategoryId = 1
+                }
+            ]);
+
+        _budgetRepository
+            .Setup(r => r.AddWithPaymentsForAccountsAsync(
+                It.Is<BudgetModel>(b => b.AccountIds == "[1,2]"),
+                It.Is<IReadOnlyList<Account>>(a => a.Count == 2),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((BudgetModel b, IReadOnlyList<Account> _, CancellationToken _) =>
+            {
+                b.BudgetId = 12;
+                return b;
+            });
+
+        var result = await _sut.CreateAsync(new CreateBudgetRequest
+        {
+            Name = "July 2026",
+            StartPeriod = DateTime.UtcNow,
+            EndPeriod = DateTime.UtcNow,
+            BudgetTemplateId = 1
+        });
+
+        result.Success.Should().BeTrue();
+        result.Data!.AccountIds.Should().Equal(1, 2);
+    }
+
+    [Fact]
     public async Task CreateAsync_UsesAllAccounts_WhenTemplateHasNoAccountIds()
     {
         _templateRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))

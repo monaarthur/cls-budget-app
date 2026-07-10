@@ -26,6 +26,8 @@ export function buildBudgetGridRows(
       const account = accountsById.get(payment.accountId);
       return {
         ...payment,
+        paymentDate: normalizeGridDateIso(payment.paymentDate),
+        clearedDate: normalizeGridDateIso(payment.clearedDate),
         accountName: account?.name ?? `Account ${payment.accountId}`,
         accountNumber: account?.number ?? "",
         accountCategoryId: account?.accountCategoryId ?? 0,
@@ -151,6 +153,8 @@ export function getBudgetPaymentRowClass(row: BudgetGridRow): string {
 
 export function getBudgetStatusRowClass(statusName: string): string {
   switch (statusName.trim().toLowerCase()) {
+    case "unassigned":
+      return "budget-row-unassigned";
     case "pending":
     case "scheduled":
       return "budget-row-scheduled";

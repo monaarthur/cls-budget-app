@@ -415,6 +415,12 @@ namespace CLS.Budget.EfCore.Migrations
                             BudgetPaymentStatusId = 5,
                             Description = "Past due and not paid",
                             Name = "Overdue"
+                        },
+                        new
+                        {
+                            BudgetPaymentStatusId = 6,
+                            Description = "Status not yet chosen",
+                            Name = "Unassigned"
                         });
                 });
 
@@ -484,6 +490,70 @@ namespace CLS.Budget.EfCore.Migrations
                     b.ToTable("CreditCardDetail", (string)null);
                 });
 
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.ImportedTransaction", b =>
+                {
+                    b.Property<int>("ImportedTransactionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ImportedTransactionId"));
+
+                    b.Property<int?>("AccountCategoryId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("BudgetPaymentStatusId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CategoryRaw")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int?>("IncomeSourceId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("LineNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("PostingStatusRaw")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("TransactionDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TransactionImportId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ImportedTransactionId");
+
+                    b.HasIndex("AccountCategoryId");
+
+                    b.HasIndex("BudgetPaymentStatusId");
+
+                    b.HasIndex("IncomeSourceId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TransactionImportId", "LineNumber");
+
+                    b.ToTable("ImportedTransaction", (string)null);
+                });
+
             modelBuilder.Entity("CLS.Budget.Domain.Entities.IncomeSource", b =>
                 {
                     b.Property<int>("IncomeSourceId")
@@ -523,6 +593,38 @@ namespace CLS.Budget.EfCore.Migrations
                             IsActive = true,
                             Name = "Business Income"
                         });
+                });
+
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.PasswordResetToken", b =>
+                {
+                    b.Property<Guid>("PasswordResetTokenId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("PasswordResetTokenId");
+
+                    b.HasIndex("TokenHash");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PasswordResetToken", (string)null);
                 });
 
             modelBuilder.Entity("CLS.Budget.Domain.Entities.PayFrequencyType", b =>
@@ -737,6 +839,40 @@ namespace CLS.Budget.EfCore.Migrations
                         });
                 });
 
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.TransactionImport", b =>
+                {
+                    b.Property<int>("TransactionImportId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("TransactionImportId"));
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int?>("IncomeSourceId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RowCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("TransactionImportId");
+
+                    b.HasIndex("IncomeSourceId");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("TransactionImport", (string)null);
+                });
+
             modelBuilder.Entity("CLS.Budget.Domain.Entities.AppUser", b =>
                 {
                     b.HasOne("CLS.Budget.Domain.Entities.Tenant", "Tenant")
@@ -833,6 +969,50 @@ namespace CLS.Budget.EfCore.Migrations
                     b.Navigation("Account");
                 });
 
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.ImportedTransaction", b =>
+                {
+                    b.HasOne("CLS.Budget.Domain.Entities.AccountCategory", "AccountCategory")
+                        .WithMany()
+                        .HasForeignKey("AccountCategoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("CLS.Budget.Domain.Entities.BudgetPaymentStatus", "BudgetPaymentStatus")
+                        .WithMany()
+                        .HasForeignKey("BudgetPaymentStatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CLS.Budget.Domain.Entities.IncomeSource", "IncomeSource")
+                        .WithMany()
+                        .HasForeignKey("IncomeSourceId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("CLS.Budget.Domain.Entities.TransactionImport", "TransactionImport")
+                        .WithMany("Transactions")
+                        .HasForeignKey("TransactionImportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AccountCategory");
+
+                    b.Navigation("BudgetPaymentStatus");
+
+                    b.Navigation("IncomeSource");
+
+                    b.Navigation("TransactionImport");
+                });
+
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.PasswordResetToken", b =>
+                {
+                    b.HasOne("CLS.Budget.Domain.Entities.AppUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("CLS.Budget.Domain.Entities.PaySchedule", b =>
                 {
                     b.HasOne("CLS.Budget.Domain.Entities.IncomeSource", "IncomeSource")
@@ -863,6 +1043,16 @@ namespace CLS.Budget.EfCore.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.TransactionImport", b =>
+                {
+                    b.HasOne("CLS.Budget.Domain.Entities.IncomeSource", "IncomeSource")
+                        .WithMany()
+                        .HasForeignKey("IncomeSourceId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("IncomeSource");
+                });
+
             modelBuilder.Entity("CLS.Budget.Domain.Entities.Account", b =>
                 {
                     b.Navigation("CreditCardDetail");
@@ -881,6 +1071,11 @@ namespace CLS.Budget.EfCore.Migrations
             modelBuilder.Entity("CLS.Budget.Domain.Entities.Tenant", b =>
                 {
                     b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.TransactionImport", b =>
+                {
+                    b.Navigation("Transactions");
                 });
 #pragma warning restore 612, 618
         }

@@ -12,7 +12,9 @@ public interface IIncomeSourceRepository
 {
     Task<IReadOnlyList<IncomeSource>> GetAllAsync(CancellationToken cancellationToken = default);
     Task<IncomeSource?> GetByIdAsync(int incomeSourceId, CancellationToken cancellationToken = default);
+    Task<IncomeSource?> GetByNameAsync(string name, CancellationToken cancellationToken = default);
     Task<bool> ExistsAsync(int incomeSourceId, CancellationToken cancellationToken = default);
+    Task<IncomeSource> AddAsync(IncomeSource source, CancellationToken cancellationToken = default);
 }
 
 public interface IPayScheduleRepository

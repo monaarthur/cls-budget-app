@@ -82,8 +82,6 @@ export function normalizeTrackedStatus(
   if (normalized === "pending") return "pending";
   if (normalized === "paid") return "paid";
   if (normalized === "scheduled") return "scheduled";
-  if (normalized === "failed") return "pending";
-  if (normalized === "overdue") return "pending";
   return null;
 }
 

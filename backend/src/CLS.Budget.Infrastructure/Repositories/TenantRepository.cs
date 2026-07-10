@@ -12,6 +12,13 @@ public sealed class TenantRepository(BudgetDbContext dbContext) : ITenantReposit
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.TenantId == tenantId, cancellationToken);
 
+    public async Task<IReadOnlyList<Tenant>> ListAsync(CancellationToken cancellationToken = default) =>
+        await dbContext.Tenants
+            .AsNoTracking()
+            .Include(t => t.Users)
+            .OrderBy(t => t.Name)
+            .ToListAsync(cancellationToken);
+
     public async Task<Tenant> AddAsync(Tenant tenant, CancellationToken cancellationToken = default)
     {
         dbContext.Tenants.Add(tenant);

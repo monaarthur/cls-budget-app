@@ -70,6 +70,7 @@ export function createEditableDateTextColDef<T extends object>(
 ): ColDef<T> {
   return {
     ...createEditableDateColDefBase(field, headerName),
+    cellEditor: GridDateCellEditor,
     ...overrides,
   };
 }

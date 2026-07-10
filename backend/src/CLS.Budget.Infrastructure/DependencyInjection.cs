@@ -40,14 +40,21 @@ public static class DependencyInjection
         services.AddScoped<IPayScheduleRepository, PayScheduleRepository>();
         services.AddScoped<IBudgetRepository, BudgetRepository>();
         services.AddScoped<IBudgetTemplateRepository, BudgetTemplateRepository>();
+        services.AddScoped<IAccountCategoryRepository, AccountCategoryRepository>();
+        services.AddScoped<ITransactionImportRepository, TransactionImportRepository>();
 
         // Authentication / identity
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
+        services.Configure<PasswordResetOptions>(configuration.GetSection(PasswordResetOptions.SectionName));
+        services.Configure<SmtpOptions>(configuration.GetSection(SmtpOptions.SectionName));
         services.AddSingleton<IPasswordHasher, PasswordHasherAdapter>();
         services.AddSingleton<ITokenService, TokenService>();
+        services.AddSingleton<IPasswordResetSettings, PasswordResetSettings>();
+        services.AddSingleton<IPasswordResetNotifier, SmtpPasswordResetNotifier>();
         services.AddScoped<IAppUserRepository, AppUserRepository>();
         services.AddScoped<ITenantRepository, TenantRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
 
         return services;
     }

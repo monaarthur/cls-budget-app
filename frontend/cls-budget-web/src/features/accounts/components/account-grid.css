@@ -438,6 +438,18 @@
 }
 
 /* Budget grid — payment status row colors */
+.account-grid-viewport .budget-row-unassigned {
+  background-color: #f8fafc !important;
+}
+
+.account-grid-viewport .budget-row-unassigned.ag-row-odd {
+  background-color: #f1f5f9 !important;
+}
+
+.account-grid-viewport .budget-row-unassigned.ag-row-hover {
+  background-color: #e2e8f0 !important;
+}
+
 .account-grid-viewport .budget-row-pending {
   background-color: #fef2f2 !important;
 }

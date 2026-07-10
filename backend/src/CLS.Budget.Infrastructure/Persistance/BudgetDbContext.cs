@@ -26,6 +26,9 @@ public class BudgetDbContext(DbContextOptions<BudgetDbContext> options, ITenantC
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<AppUser> AppUsers => Set<AppUser>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<TransactionImport> TransactionImports => Set<TransactionImport>();
+    public DbSet<ImportedTransaction> ImportedTransactions => Set<ImportedTransaction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -241,6 +244,61 @@ public class BudgetDbContext(DbContextOptions<BudgetDbContext> options, ITenantC
                 .WithMany(u => u.RefreshTokens)
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PasswordResetToken>(e =>
+        {
+            e.ToTable("PasswordResetToken");
+            e.HasKey(x => x.PasswordResetTokenId);
+            e.Property(x => x.TokenHash).IsRequired().HasMaxLength(500);
+            e.HasIndex(x => x.TokenHash);
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TransactionImport>(e =>
+        {
+            e.ToTable("TransactionImport");
+            e.HasKey(x => x.TransactionImportId);
+            e.Property(x => x.FileName).IsRequired().HasMaxLength(500);
+            e.HasOne(x => x.IncomeSource)
+                .WithMany()
+                .HasForeignKey(x => x.IncomeSourceId)
+                .OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(x => x.TenantId);
+            e.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<ImportedTransaction>(e =>
+        {
+            e.ToTable("ImportedTransaction");
+            e.HasKey(x => x.ImportedTransactionId);
+            e.Property(x => x.Description).IsRequired().HasMaxLength(500);
+            e.Property(x => x.CategoryRaw).HasMaxLength(200);
+            e.Property(x => x.Amount).HasColumnType("numeric(18,2)");
+            e.Property(x => x.PostingStatusRaw).HasMaxLength(100);
+            e.Property(x => x.Notes).HasMaxLength(1000);
+            e.HasOne(x => x.TransactionImport)
+                .WithMany(x => x.Transactions)
+                .HasForeignKey(x => x.TransactionImportId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.AccountCategory)
+                .WithMany()
+                .HasForeignKey(x => x.AccountCategoryId)
+                .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.BudgetPaymentStatus)
+                .WithMany()
+                .HasForeignKey(x => x.BudgetPaymentStatusId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.IncomeSource)
+                .WithMany()
+                .HasForeignKey(x => x.IncomeSourceId)
+                .OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(x => x.TenantId);
+            e.HasIndex(x => new { x.TransactionImportId, x.LineNumber });
+            e.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
         });
 
         LookupDataSeed.Apply(modelBuilder);

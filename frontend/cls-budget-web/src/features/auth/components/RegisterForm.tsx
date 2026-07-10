@@ -49,6 +49,10 @@ export function RegisterForm() {
       <p className="mt-2 text-sm text-[var(--muted)]">
         Set up a new household budget workspace.
       </p>
+      <p className="mt-2 text-sm text-[var(--muted)]">
+        Invited to an existing household? Use the link in your email instead of
+        registering here.
+      </p>
 
       <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
         <label className="flex flex-col gap-1.5 text-sm font-medium">

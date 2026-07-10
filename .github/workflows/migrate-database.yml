@@ -1,12 +1,35 @@
-name: Migrate Supabase Database
+name: Migrate Database
+
+# Applies EF Core migrations (schema only — not data import).
+# Replaces running scripts/migrate-supabase.ps1 manually for RDS or Supabase.
+#
+# Required GitHub secret (pick one target):
+#   RDS_CONNECTION_STRING      — AWS RDS (production)
+#   SUPABASE_CONNECTION_STRING — Supabase (legacy)
+#
+# Format (Npgsql key=value, no surrounding quotes):
+#   Host=....rds.amazonaws.com;Port=5432;Database=postgres;Username=postgres;Password=...;SSL Mode=Require;Trust Server Certificate=true
+#
+# Network: GitHub-hosted runners need inbound TCP 5432 on the database security group
+# from the runner's public IP (or use a self-hosted runner in your VPC).
 
 on:
   push:
     branches: [main]
     paths:
       - "backend/src/CLS.Budget.Migration/**"
+      - "backend/.config/dotnet-tools.json"
       - ".github/workflows/migrate-database.yml"
   workflow_dispatch:
+    inputs:
+      target:
+        description: Database to migrate
+        required: true
+        default: rds
+        type: choice
+        options:
+          - rds
+          - supabase
 
 env:
   DOTNET_VERSION: "9.0.x"
@@ -17,6 +40,7 @@ jobs:
     defaults:
       run:
         working-directory: backend
+
     steps:
       - uses: actions/checkout@v4
 
@@ -31,24 +55,56 @@ jobs:
       - name: Restore Migration project
         run: dotnet restore src/CLS.Budget.Migration/CLS.Budget.Migration.csproj
 
-      - name: Validate connection string format
+      - name: Resolve connection string
+        id: conn
         env:
+          TARGET: ${{ github.event_name == 'workflow_dispatch' && inputs.target || 'rds' }}
+          RDS_CONNECTION_STRING: ${{ secrets.RDS_CONNECTION_STRING }}
           SUPABASE_CONNECTION_STRING: ${{ secrets.SUPABASE_CONNECTION_STRING }}
         run: |
-          if [ -z "$SUPABASE_CONNECTION_STRING" ]; then
-            echo "::error::SUPABASE_CONNECTION_STRING secret is not set."
-            exit 1
+          set -euo pipefail
+          if [ "$TARGET" = "supabase" ]; then
+            CONN="$SUPABASE_CONNECTION_STRING"
+            LABEL="Supabase"
+          else
+            CONN="$RDS_CONNECTION_STRING"
+            LABEL="RDS"
           fi
-          if [[ "$SUPABASE_CONNECTION_STRING" == postgresql://* ]] || [[ "$SUPABASE_CONNECTION_STRING" == postgres://* ]]; then
-            echo "::error::Use Npgsql key=value format (Host=...;Port=...), not postgresql:// URI. See docs/DEPLOYMENT.md"
-            exit 1
-          fi
-          if [[ ! "$SUPABASE_CONNECTION_STRING" == Host=* ]]; then
-            echo "::error::Connection string must start with Host=. Do not wrap the value in quotes when saving the secret."
+
+          if [ -z "$CONN" ]; then
+            if [ "$TARGET" = "supabase" ]; then
+              echo "::error::SUPABASE_CONNECTION_STRING secret is not set."
+            else
+              echo "::error::RDS_CONNECTION_STRING secret is not set."
+            fi
             exit 1
           fi
 
+          if [[ "$CONN" == postgresql://* ]] || [[ "$CONN" == postgres://* ]]; then
+            echo "::error::Use Npgsql key=value format (Host=...;Port=...), not postgresql:// URI."
+            exit 1
+          fi
+
+          if [[ ! "$CONN" == Host=* ]]; then
+            echo "::error::Connection string must start with Host=. Do not wrap the secret in quotes."
+            exit 1
+          fi
+
+          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+          echo "label=$LABEL" >> "$GITHUB_OUTPUT"
+          {
+            echo "connection_string<<EOF"
+            echo "$CONN"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "Migrating $LABEL database..."
+
       - name: Apply EF migrations
-        env:
-          SUPABASE_CONNECTION_STRING: ${{ secrets.SUPABASE_CONNECTION_STRING }}
-        run: dotnet ef database update --project src/CLS.Budget.Migration --startup-project src/CLS.Budget.Migration --connection "$SUPABASE_CONNECTION_STRING"
+        run: |
+          dotnet ef database update \
+            --project src/CLS.Budget.Migration \
+            --startup-project src/CLS.Budget.Migration \
+            --connection "${{ steps.conn.outputs.connection_string }}"
+
+      - name: Summary
+        run: echo "Migrations applied to ${{ steps.conn.outputs.label }}."

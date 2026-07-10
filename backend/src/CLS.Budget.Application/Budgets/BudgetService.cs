@@ -78,20 +78,20 @@ public sealed class BudgetService(
         else
         {
             var accounts = await accountRepository.GetByIdsAsync(accountIds, cancellationToken);
-            var foundIds = accounts.Select(a => a.AccountId).ToHashSet();
-            var missingIds = accountIds.Where(id => !foundIds.Contains(id)).ToList();
-            if (missingIds.Count > 0)
-            {
-                return ApiResponse<BudgetResponse>.Fail(
-                    $"Accounts not found for template: {string.Join(", ", missingIds)}.");
-            }
-
             var accountsById = accounts.ToDictionary(a => a.AccountId);
             orderedAccounts = accountIds
                 .Where(id => accountsById.ContainsKey(id))
                 .Select(id => accountsById[id])
                 .ToList();
-            serializedAccountIds = template.AccountIds!;
+
+            if (orderedAccounts.Count == 0)
+            {
+                return ApiResponse<BudgetResponse>.Fail(
+                    "No accounts exist to include in a budget.");
+            }
+
+            serializedAccountIds = BudgetTemplateAccountIdsParser.Serialize(
+                orderedAccounts.Select(a => a.AccountId).ToList());
         }
 
         var budget = BudgetMapper.ToEntity(request);
@@ -134,15 +134,21 @@ public sealed class BudgetService(
         }
 
         var accounts = await accountRepository.GetByIdsAsync(accountIds, cancellationToken);
-        var foundIds = accounts.Select(a => a.AccountId).ToHashSet();
-        var missingIds = accountIds.Where(id => !foundIds.Contains(id)).ToList();
-        if (missingIds.Count > 0)
+        var accountsById = accounts.ToDictionary(a => a.AccountId);
+        var resolvedAccountIds = accountIds.Where(id => accountsById.ContainsKey(id)).ToList();
+        if (resolvedAccountIds.Count == 0)
         {
             return ApiResponse<BudgetResponse>.Fail(
-                $"Accounts not found for source budget: {string.Join(", ", missingIds)}.");
+                "No accounts exist to include in a budget.");
         }
 
+        var allowedIds = resolvedAccountIds.ToHashSet();
+        source.BudgetPayments = source.BudgetPayments
+            .Where(p => allowedIds.Contains(p.AccountId))
+            .ToList();
+
         var newBudget = BudgetMapper.ToCopiedEntity(source, request, budgetTemplateId);
+        newBudget.AccountIds = BudgetTemplateAccountIdsParser.Serialize(resolvedAccountIds);
         var created = await budgetRepository.CopyWithPaymentsAsync(source, newBudget, cancellationToken);
 
         return ApiResponse<BudgetResponse>.Ok(BudgetMapper.ToResponse(created));

@@ -15,8 +15,8 @@ internal static class PaymentMapper
         BudgetPaymentStatusId = payment.BudgetPaymentStatusId,
         BudgetPaymentStatusName = payment.BudgetPaymentStatus?.Name ?? string.Empty,
         IsCleared = payment.IsCleared,
-        PaymentDate = payment.PaymentDate,
-        ClearedDate = payment.ClearedDate,
+        PaymentDate = ToUtcDate(payment.PaymentDate),
+        ClearedDate = ToUtcDate(payment.ClearedDate),
         PaymentSourceId = payment.PaymentSourceId,
         IncomeSourceId = payment.IncomeSourceId,
         IncomeSourceName = payment.IncomeSource?.Name
@@ -30,8 +30,8 @@ internal static class PaymentMapper
         Amount = request.Amount,
         BudgetPaymentStatusId = request.BudgetPaymentStatusId,
         IsCleared = request.IsCleared,
-        PaymentDate = request.PaymentDate,
-        ClearedDate = request.ClearedDate,
+        PaymentDate = ToUtcDate(request.PaymentDate),
+        ClearedDate = ToUtcDate(request.ClearedDate),
         PaymentSourceId = request.PaymentSourceId,
         IncomeSourceId = request.IncomeSourceId
     };
@@ -44,9 +44,15 @@ internal static class PaymentMapper
         payment.Amount = request.Amount;
         payment.BudgetPaymentStatusId = request.BudgetPaymentStatusId;
         payment.IsCleared = request.IsCleared;
-        payment.PaymentDate = request.PaymentDate;
-        payment.ClearedDate = request.ClearedDate;
+        payment.PaymentDate = ToUtcDate(request.PaymentDate);
+        payment.ClearedDate = ToUtcDate(request.ClearedDate);
         payment.PaymentSourceId = request.PaymentSourceId;
         payment.IncomeSourceId = request.IncomeSourceId;
     }
+
+    private static DateTime ToUtcDate(DateTime value) =>
+        DateTime.SpecifyKind(value.ToUniversalTime().Date, DateTimeKind.Utc);
+
+    private static DateTime? ToUtcDate(DateTime? value) =>
+        value.HasValue ? ToUtcDate(value.Value) : null;
 }

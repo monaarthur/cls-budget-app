@@ -45,9 +45,14 @@ public sealed class TokenService(IOptions<JwtOptions> options) : ITokenService
 
     public RefreshTokenResult CreateRefreshToken()
     {
+        return CreateOneTimeToken(TimeSpan.FromDays(_options.RefreshTokenDays));
+    }
+
+    public RefreshTokenResult CreateOneTimeToken(TimeSpan lifetime)
+    {
         var bytes = RandomNumberGenerator.GetBytes(64);
         var rawToken = Base64UrlEncoder.Encode(bytes);
-        var expiresAt = DateTime.UtcNow.AddDays(_options.RefreshTokenDays);
+        var expiresAt = DateTime.UtcNow.Add(lifetime);
         return new RefreshTokenResult(rawToken, HashRefreshToken(rawToken), expiresAt);
     }
 

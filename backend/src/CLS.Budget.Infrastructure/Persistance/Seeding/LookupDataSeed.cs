@@ -88,7 +88,8 @@ public static class LookupDataSeed
         new BudgetPaymentStatus { BudgetPaymentStatusId = 2, Name = "Scheduled", Description = "Scheduled for payment" },
         new BudgetPaymentStatus { BudgetPaymentStatusId = 3, Name = "Paid", Description = "Payment completed" },
         new BudgetPaymentStatus { BudgetPaymentStatusId = 4, Name = "Failed", Description = "Payment attempt failed" },
-        new BudgetPaymentStatus { BudgetPaymentStatusId = 5, Name = "Overdue", Description = "Past due and not paid" }
+        new BudgetPaymentStatus { BudgetPaymentStatusId = 5, Name = "Overdue", Description = "Past due and not paid" },
+        new BudgetPaymentStatus { BudgetPaymentStatusId = 6, Name = "Unassigned", Description = "Status not yet chosen" }
     ];
 
     public static IEnumerable<PaymentSource> GetPaymentSources() =>

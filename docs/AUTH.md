@@ -210,6 +210,8 @@ Uses ASP.NET Core `PasswordHasher<AppUser>` for register/login password verify.
 | `POST /api/v1/auth/register` | Anonymous | `RegisterAsync` |
 | `POST /api/v1/auth/login` | Anonymous | `LoginAsync` |
 | `POST /api/v1/auth/refresh` | Anonymous | `RefreshAsync` |
+| `POST /api/v1/auth/forgot-password` | Anonymous | `ForgotPasswordAsync` |
+| `POST /api/v1/auth/reset-password` | Anonymous | `ResetPasswordAsync` |
 | `GET /api/v1/auth/me` | Bearer required | `GetCurrentUserAsync` (reads `sub` from `User`) |
 
 #### 6. Authorization on business APIs
@@ -247,6 +249,38 @@ So after login, every budget/account/payment query is limited to the user’s ho
 4. Frontend `persistAuthSession` + sets `user`.
 5. Router navigates to `/`.
 6. If auth enabled, middleware sees cookie on subsequent requests.
+
+#### Password reset
+
+1. User opens `/forgot-password` and submits their email.
+2. `POST /api/v1/auth/forgot-password` creates a one-time token (60 minutes by default).
+3. Reset link is sent via SMTP when `Smtp:Enabled` is true (e.g. Gmail), otherwise logged to the API console.
+
+#### Gmail SMTP setup
+
+1. Turn on [2-Step Verification](https://myaccount.google.com/security) for your Google account.
+2. Create an [App Password](https://myaccount.google.com/apppasswords) (Google Account → Security → App passwords).
+3. Add to `appsettings.Development.json` (or env vars `Smtp__*`):
+
+```json
+"Smtp": {
+  "Enabled": true,
+  "Host": "smtp.gmail.com",
+  "Port": 587,
+  "UseStartTls": true,
+  "Username": "you@gmail.com",
+  "Password": "16-char-app-password",
+  "FromAddress": "you@gmail.com",
+  "FromDisplayName": "CLS Budget"
+}
+```
+
+4. Restart the API and submit forgot-password with the **same Gmail address** registered in `AppUser`.
+4. User opens `/reset-password?token=...`, sets a new password.
+5. `POST /api/v1/auth/reset-password` updates the hash, marks the token used, and revokes active refresh tokens.
+6. User signs in at `/login` with the new password.
+
+Configure `PasswordReset:FrontendBaseUrl` (env: `PasswordReset__FrontendBaseUrl`) to your CloudFront or Vercel URL in production.
 
 #### Login
 

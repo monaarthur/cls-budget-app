@@ -25,3 +25,12 @@ export interface RegisterRequest {
   displayName: string;
   tenantName?: string;
 }
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  newPassword: string;
+}

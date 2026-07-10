@@ -1,6 +1,8 @@
 using CLS.Budget.Application.Abstractions.Services;
 using CLS.Budget.Application.Accounts;
 using CLS.Budget.Application.Accounts.Validators;
+using CLS.Budget.Application.Admin;
+using CLS.Budget.Application.Admin.Validators;
 using CLS.Budget.Application.Auth;
 using CLS.Budget.Application.Budgets;
 using CLS.Budget.Application.CreditCards;
@@ -11,6 +13,7 @@ using CLS.Budget.Application.Payments;
 using CLS.Budget.Application.Incomes;
 using CLS.Budget.Application.IncomeSources;
 using CLS.Budget.Application.PaySchedules;
+using CLS.Budget.Application.TransactionImports;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -34,6 +37,8 @@ public static class DependencyInjection
         services.AddScoped<IBudgetService, BudgetService>();
         services.AddScoped<ICreditCardService, CreditCardService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IAdminService, AdminService>();
+        services.AddScoped<ITransactionImportService, TransactionImportService>();
 
         return services;
     }

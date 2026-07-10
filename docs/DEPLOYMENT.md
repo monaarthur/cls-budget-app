@@ -7,6 +7,7 @@ CLS Budget runs across three hosted services:
 | Frontend | [Vercel](https://vercel.com) | `frontend/cls-budget-web` |
 | API | [Azure App Service](https://azure.microsoft.com/products/app-service) | `backend/src/CLS.Budget.Api` |
 | Database | [Supabase](https://supabase.com) (PostgreSQL) | EF migrations in `backend/src/CLS.Budget.Migration` |
+| Database (AWS) | [Amazon RDS PostgreSQL](https://aws.amazon.com/rds/) | See [AWS-RDS-SETUP.md](AWS-RDS-SETUP.md) |
 
 Secrets live in each platform's dashboard — never commit passwords, JWT keys, or `.env.local` files.
 
@@ -80,17 +81,26 @@ Store the same connection string in Azure App Service (next section). Do **not**
 
 ### GitHub Actions migrations
 
-Migrations run automatically via `.github/workflows/migrate-database.yml` when changes under `backend/src/CLS.Budget.Migration/**` are pushed to `main`. You can also trigger the workflow manually from the **Actions** tab (`workflow_dispatch`).
+Migrations run automatically via [`.github/workflows/migrate-database.yml`](../.github/workflows/migrate-database.yml) when changes under `backend/src/CLS.Budget.Migration/**` are pushed to `main`. You can also trigger the workflow manually from the **Actions** tab (**Migrate Database** → **Run workflow**).
 
-**Repository secret (required):**
+**Repository secrets (one per target):**
 
-| Secret | Description |
+| Secret | When to use |
 |--------|-------------|
-| `SUPABASE_CONNECTION_STRING` | Direct Supabase PostgreSQL connection string (same format as above) |
+| `RDS_CONNECTION_STRING` | AWS RDS production (default on push to `main`) |
+| `SUPABASE_CONNECTION_STRING` | Supabase (legacy; choose **supabase** when running manually) |
 
-**Deploy order:** Run database migrations **before** deploying the API. If a push changes both migrations and API code, the migration workflow and `deploy-api.yml` may run in parallel — verify migrations succeeded in **Actions** before relying on new schema in production, or deploy migrations first (push migration-only commit, then API changes).
+**RDS connection string example** (no quotes around the secret value):
 
-**Verify:** After a successful workflow run, confirm in Supabase **Table Editor** or **Database → Migrations** that the latest EF migration is applied. Re-run locally with the helper script only if you need to apply pending migrations to another database.
+```
+Host=cls-budget-db.cm7e8coy6c7r.us-east-1.rds.amazonaws.com;Port=5432;Database=postgres;Username=postgres;Password=YOUR_PASSWORD;SSL Mode=Require;Trust Server Certificate=true
+```
+
+**Network:** GitHub-hosted runners connect from the public internet. RDS must allow inbound **5432** from the runner (temporary **My IP** rule, a self-hosted runner in your VPC, or public access with a tight SG). After migration, remove any broad `0.0.0.0/0` rule.
+
+**Manual fallback:** `.\scripts\migrate-supabase.ps1 -ConnectionString "<same string>"` (works for RDS or Supabase).
+
+**Deploy order:** Run database migrations **before** deploying the API. If a push changes both migrations and API code, verify the migration workflow succeeded in **Actions** before relying on new schema in production.
 
 ---
 
@@ -139,6 +149,101 @@ curl https://<your-app>.azurewebsites.net/api/v1/budget-payment-statuses
 
 ---
 
+## 3b. AWS EC2 (API alternative)
+
+Host the ASP.NET Core API on **EC2** with **RDS PostgreSQL** (same database you migrated with `import-rds-sql.ps1`).
+
+| Component | Value |
+|-----------|--------|
+| RDS endpoint | `cls-budget-db.cm7e8coy6c7r.us-east-1.rds.amazonaws.com` |
+| EC2 instance name | `cls-budget-api` |
+| API port | `80` → container `8080` |
+
+### Step 1 — Create EC2 host
+
+From the repo root (requires AWS CLI + `budget-admin` credentials):
+
+```powershell
+.\scripts\create-ec2-api.ps1
+```
+
+This script:
+
+- Creates an SSH key pair at `scripts/keys/cls-budget-api.pem` (gitignored)
+- Creates security group `cls-budget-api-sg` (HTTP 80 public, SSH from your IP)
+- Adds RDS inbound rule: port **5432** from the API security group
+- Launches **Amazon Linux 2023** with Docker pre-installed
+
+Save the **public IP** from the output. Wait ~2 minutes for bootstrap before deploying.
+
+### Step 2 — Print env checklist (optional)
+
+```powershell
+.\scripts\setup-ec2-api.ps1 -Ec2PublicIp <PUBLIC_IP>
+```
+
+### Step 3 — Deploy API
+
+```powershell
+.\scripts\deploy-api-ec2.ps1 `
+  -Ec2PublicIp <PUBLIC_IP> `
+  -Password 'YOUR_RDS_PASSWORD' `
+  -CorsOrigin 'https://your-cloudfront-url.cloudfront.net'
+```
+
+The deploy script:
+
+1. `dotnet publish` the API locally
+2. Copies files to EC2 via SCP
+3. Runs the app in Docker (`mcr.microsoft.com/dotnet/aspnet:9.0`)
+
+**Application settings** (written to EC2 as `cls-budget-api.env`):
+
+| Name | Value |
+|------|-------|
+| `ASPNETCORE_ENVIRONMENT` | `Production` |
+| `ConnectionStrings__BudgetDatabase` | RDS Npgsql string with SSL |
+| `Jwt__SigningKey` | Auto-generated (save from deploy output) |
+| `Auth__Enabled` | `true` |
+| `Cors__AllowedOrigins__0` | CloudFront URL (when frontend is on S3) |
+
+### Step 4 — Verify API
+
+```powershell
+curl http://<PUBLIC_IP>/api/v1/budget-payment-statuses
+```
+
+A `401 Unauthorized` response means the API is up (auth is required). Check container logs:
+
+```powershell
+ssh -i scripts/keys/cls-budget-api.pem ec2-user@<PUBLIC_IP> "docker logs cls-budget-api"
+```
+
+### Step 5 — Point frontend at EC2
+
+Set GitHub secret for [`.github/workflows/AWS-DeployReactAppS3.yml`](../.github/workflows/AWS-DeployReactAppS3.yml):
+
+| Secret | Value |
+|--------|--------|
+| `NEXT_PUBLIC_API_BASE_URL` | `http://<PUBLIC_IP>` (or HTTPS URL after ALB/domain) |
+
+Redeploy the S3 workflow. Ensure `Cors__AllowedOrigins__0` on EC2 matches your CloudFront URL.
+
+### Security notes
+
+- RDS is reachable from EC2 via **security group** (no public IP required on RDS once EC2 is linked).
+- You can disable RDS **public access** after EC2 deploy if you no longer need pgAdmin from home.
+- For production HTTPS, add an **Application Load Balancer** + ACM certificate, or nginx + Let's Encrypt on EC2.
+- SSH key `scripts/keys/cls-budget-api.pem` must stay private.
+
+### Redeploy after code changes
+
+```powershell
+.\scripts\deploy-api-ec2.ps1 -Ec2PublicIp <PUBLIC_IP> -Password 'YOUR_RDS_PASSWORD'
+```
+
+---
+
 ## 4. Vercel (frontend)
 
 ### Import project
@@ -162,6 +267,27 @@ Redeploy after setting variables.
 ### Update API CORS
 
 Add your Vercel URL to Azure `Cors__AllowedOrigins__0` (see step 3). Restart the App Service if needed.
+
+---
+
+## 4b. AWS S3 + CloudFront (frontend alternative)
+
+Deploy the static Next.js export via GitHub Actions:
+
+- Workflow: [`.github/workflows/AWS-DeployReactAppS3.yml`](../.github/workflows/AWS-DeployReactAppS3.yml)
+- Bucket: `cls-budget-app-prod` (us-east-1)
+- Trigger: push to `main` (frontend paths) or **Actions → AWS Deploy React to S3 → Run workflow**
+
+**GitHub secrets:**
+
+| Secret | Value |
+|--------|--------|
+| `NEXT_PUBLIC_API_BASE_URL` | CloudFront URL (proxies `/api/*` to EC2) e.g. `https://d123.cloudfront.net` |
+| `CLOUDFRONT_DISTRIBUTION_ID` | Optional — invalidates cache after deploy |
+
+**CloudFront:** set default root object `index.html` and custom error responses (403/404 → `/index.html` with 200) for client-side routes.
+
+**Cursor AWS MCP (local troubleshooting):** see [AWS-MCP.md](AWS-MCP.md) for `uvx` setup and how that differs from this S3 workflow.
 
 ---
 

@@ -11,10 +11,15 @@ public sealed class AuthService(
     IAppUserRepository userRepository,
     ITenantRepository tenantRepository,
     IRefreshTokenRepository refreshTokenRepository,
+    IPasswordResetTokenRepository passwordResetTokenRepository,
     IPasswordHasher passwordHasher,
-    ITokenService tokenService) : IAuthService
+    ITokenService tokenService,
+    IPasswordResetNotifier passwordResetNotifier,
+    IPasswordResetSettings passwordResetSettings) : IAuthService
 {
     private const string InvalidCredentials = "Invalid email or password.";
+    private const string InvalidResetToken =
+        "The password reset link is invalid or has expired.";
 
     public async Task<ApiResponse<AuthResponse>> RegisterAsync(
         RegisterRequest request,
@@ -116,6 +121,67 @@ public sealed class AuthService(
         }
 
         return ApiResponse<CurrentUserResponse>.Ok(AuthMapper.ToCurrentUser(user));
+    }
+
+    public async Task<ApiResponse<bool>> ForgotPasswordAsync(
+        ForgotPasswordRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var email = Normalize(request.Email);
+        var user = await userRepository.GetByEmailAsync(email, cancellationToken);
+
+        if (user is not null && user.IsActive)
+        {
+            await passwordResetTokenRepository.InvalidateActiveForUserAsync(
+                user.UserId,
+                cancellationToken);
+
+            var reset = tokenService.CreateOneTimeToken(passwordResetSettings.TokenLifetime);
+            await passwordResetTokenRepository.AddAsync(
+                new PasswordResetToken
+                {
+                    PasswordResetTokenId = Guid.NewGuid(),
+                    UserId = user.UserId,
+                    TokenHash = reset.TokenHash,
+                    ExpiresAt = reset.ExpiresAt,
+                    CreatedAt = DateTime.UtcNow
+                },
+                cancellationToken);
+
+            await passwordResetNotifier.SendResetLinkAsync(
+                user.Email,
+                reset.RawToken,
+                cancellationToken);
+        }
+
+        return ApiResponse<bool>.Ok(true);
+    }
+
+    public async Task<ApiResponse<bool>> ResetPasswordAsync(
+        ResetPasswordRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var hash = tokenService.HashRefreshToken(request.Token);
+        var stored = await passwordResetTokenRepository.GetByHashAsync(hash, cancellationToken);
+
+        if (stored is null
+            || stored.UsedAt is not null
+            || stored.ExpiresAt <= DateTime.UtcNow
+            || stored.User is null
+            || !stored.User.IsActive)
+        {
+            return ApiResponse<bool>.Fail(InvalidResetToken);
+        }
+
+        var user = stored.User;
+        user.PasswordHash = passwordHasher.Hash(request.NewPassword);
+        await userRepository.UpdateAsync(user, cancellationToken);
+
+        stored.UsedAt = DateTime.UtcNow;
+        await passwordResetTokenRepository.UpdateAsync(stored, cancellationToken);
+        await refreshTokenRepository.RevokeAllActiveForUserAsync(user.UserId, cancellationToken);
+
+        return ApiResponse<bool>.Ok(true);
     }
 
     private async Task<AuthResponse> IssueTokensAsync(AppUser user, CancellationToken cancellationToken)

@@ -20,4 +20,12 @@ public interface IAuthService
     Task<ApiResponse<CurrentUserResponse>> GetCurrentUserAsync(
         Guid userId,
         CancellationToken cancellationToken = default);
+
+    Task<ApiResponse<bool>> ForgotPasswordAsync(
+        ForgotPasswordRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<ApiResponse<bool>> ResetPasswordAsync(
+        ResetPasswordRequest request,
+        CancellationToken cancellationToken = default);
 }

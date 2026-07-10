@@ -7,4 +7,8 @@ public interface IIncomeSourceService
 {
     Task<ApiResponse<IReadOnlyList<IncomeSourceResponse>>> GetAllAsync(
         CancellationToken cancellationToken = default);
+
+    Task<ApiResponse<IncomeSourceResponse>> CreateAsync(
+        CreateIncomeSourceRequest request,
+        CancellationToken cancellationToken = default);
 }

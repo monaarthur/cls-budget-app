@@ -18,3 +18,15 @@ Thumbs.db
 # Local Windows Service config (passwords)
 scripts/local-service.appsettings.json
 scripts/local-api.appsettings.json
+scripts/local-api-rds.appsettings.json
+
+# Database dumps (local export for RDS migration)
+data/
+*.dump
+*.sql
+scripts/rds-connection.local.txt
+
+# EC2 SSH keys and local deploy env
+scripts/keys/
+*.pem
+scripts/ec2-api.env

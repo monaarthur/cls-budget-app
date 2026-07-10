@@ -40,6 +40,24 @@ public sealed class IncomeSourceRepository(BudgetDbContext dbContext) : IIncomeS
         await dbContext.IncomeSources
             .AsNoTracking()
             .AnyAsync(s => s.IncomeSourceId == incomeSourceId, cancellationToken);
+
+    public async Task<IncomeSource?> GetByNameAsync(
+        string name,
+        CancellationToken cancellationToken = default) =>
+        await dbContext.IncomeSources
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                s => s.Name.ToLower() == name.ToLower(),
+                cancellationToken);
+
+    public async Task<IncomeSource> AddAsync(
+        IncomeSource source,
+        CancellationToken cancellationToken = default)
+    {
+        dbContext.IncomeSources.Add(source);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return source;
+    }
 }
 
 public sealed class PayScheduleRepository(BudgetDbContext dbContext) : IPayScheduleRepository

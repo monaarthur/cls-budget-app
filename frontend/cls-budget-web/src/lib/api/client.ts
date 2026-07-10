@@ -172,3 +172,50 @@ export function apiPut<T, B>(path: string, body: B) {
 export function apiDelete<T>(path: string) {
   return request<T>(path, { method: "DELETE" });
 }
+
+export async function apiUploadFile<T>(path: string, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const headers: Record<string, string> = {};
+  if (AUTH_ENABLED) {
+    const token = getAccessToken();
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${getBaseUrl()}${path}`, {
+      method: "POST",
+      body: formData,
+      headers,
+      cache: "no-store",
+    });
+  } catch {
+    throw new ApiError(0, API_UNAVAILABLE_MESSAGE);
+  }
+
+  const text = await res.text();
+  if (!text) {
+    throw new ApiError(res.status, res.statusText || "Empty API response");
+  }
+
+  let body: ApiResponse<T>;
+  try {
+    body = JSON.parse(text) as ApiResponse<T>;
+  } catch {
+    throw new ApiError(res.status, "Invalid API response");
+  }
+
+  if (!res.ok || body.success === false) {
+    throw new ApiError(
+      res.status,
+      body.errors?.[0] ?? res.statusText ?? "Upload failed",
+      body.errors ?? [],
+    );
+  }
+
+  return body;
+}

@@ -3,13 +3,16 @@ param(
     [string]$ConnectionString
 )
 
+# Applies EF Core schema migrations. Prefer GitHub Actions:
+#   .github/workflows/migrate-database.yml  (secret: RDS_CONNECTION_STRING or SUPABASE_CONNECTION_STRING)
+
 $ErrorActionPreference = "Stop"
 
 $backendRoot = Resolve-Path (Join-Path $PSScriptRoot "..\backend")
 Push-Location $backendRoot
 
 try {
-    Write-Host "Running EF migrations against Supabase..."
+    Write-Host "Running EF migrations..."
     dotnet ef database update `
         --project src/CLS.Budget.Migration `
         --startup-project src/CLS.Budget.Migration `

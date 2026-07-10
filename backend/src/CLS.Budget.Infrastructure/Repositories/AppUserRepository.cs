@@ -26,4 +26,10 @@ public sealed class AppUserRepository(BudgetDbContext dbContext) : IAppUserRepos
         await dbContext.SaveChangesAsync(cancellationToken);
         return user;
     }
+
+    public async Task UpdateAsync(AppUser user, CancellationToken cancellationToken = default)
+    {
+        dbContext.AppUsers.Update(user);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 }

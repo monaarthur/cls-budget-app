@@ -1,5 +1,7 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using CLS.Budget.Api.Auth;
+using CLS.Budget.Api.Admin;
 using CLS.Budget.Application;
 using CLS.Budget.Application.Abstractions;
 using CLS.Budget.Application.Common;
@@ -17,6 +19,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseWindowsService();
 
 builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    })
     .ConfigureApiBehaviorOptions(options =>
     {
         options.InvalidModelStateResponseFactory = context =>
@@ -44,6 +50,7 @@ builder.Services.AddScoped<ITenantContext, HttpTenantContext>();
 var authOptions = builder.Configuration.GetSection(AuthOptions.SectionName).Get<AuthOptions>()
     ?? new AuthOptions();
 builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.SectionName));
+builder.Services.Configure<AdminOptions>(builder.Configuration.GetSection(AdminOptions.SectionName));
 
 // Guardrail: authentication may only be disabled in Development.
 if (!authOptions.Enabled && !builder.Environment.IsDevelopment())
@@ -141,13 +148,25 @@ var productionCorsOrigins = builder.Configuration
     .Distinct(StringComparer.OrdinalIgnoreCase)
     .ToArray() ?? [];
 
+var passwordResetFrontendUrl = builder.Configuration
+    .GetSection(PasswordResetOptions.SectionName)
+    .Get<PasswordResetOptions>()
+    ?.FrontendBaseUrl?
+    .Trim()
+    .TrimEnd('/');
+
+if (productionCorsOrigins.Length == 0 && !string.IsNullOrWhiteSpace(passwordResetFrontendUrl))
+{
+    productionCorsOrigins = [passwordResetFrontendUrl];
+}
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendDev", policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:3000",
-                "http://localhost:5173")
+        policy.SetIsOriginAllowed(origin =>
+                Uri.TryCreate(origin, UriKind.Absolute, out var uri)
+                && (uri.Host is "localhost" or "127.0.0.1"))
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -173,8 +192,6 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-    app.UseHttpsRedirection();
-
     if (productionCorsOrigins.Length > 0)
     {
         app.UseCors("FrontendProduction");

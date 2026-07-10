@@ -1,0 +1,17 @@
+{
+  "ConnectionStrings": {
+    "BudgetDatabase": "Host=cls-budget-db.cm7e8coy6c7r.us-east-1.rds.amazonaws.com;Port=5432;Database=postgres;Username=postgres;Password=REPLACE_WITH_RDS_PASSWORD;SSL Mode=Require;Trust Server Certificate=true"
+  },
+  "Auth": {
+    "Enabled": false,
+    "DevTenantId": "00000000-0000-0000-0000-000000000001"
+  },
+  "PasswordReset": {
+    "FrontendBaseUrl": "https://d12onqucnncuke.cloudfront.net",
+    "TokenMinutes": 60
+  },
+  "Admin": {
+    "ApiKey": "REPLACE_WITH_PROD_ADMIN_KEY_OR_ANY_SECRET_FOR_LOCAL_INVITES"
+  },
+  "Urls": "http://localhost:5123"
+}

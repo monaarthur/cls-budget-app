@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  ArrowUpFromLine,
   Banknote,
   CreditCard,
   Home,
@@ -17,6 +18,7 @@ const navItems = [
   { href: "/credit-cards", label: "Cards", icon: WalletCards },
   { href: "/income", label: "Income", icon: Banknote },
   { href: "/payments", label: "Payments", icon: CreditCard },
+  { href: "/transactions", label: "Import", icon: ArrowUpFromLine },
   { href: "/budgets", label: "Budgets", icon: LayoutGrid },
 ] as const;
 

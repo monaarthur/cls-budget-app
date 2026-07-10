@@ -3,7 +3,10 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { isAuthPublicPath } from "@/features/auth/lib/authConfig";
+import {
+  isAuthPublicPath,
+  resolvePathname,
+} from "@/features/auth/lib/authConfig";
 
 /**
  * Client-side guard when auth is enabled. Middleware handles the cookie check;
@@ -13,16 +16,24 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { authEnabled, isLoading, isAuthenticated } = useAuth();
+  const resolvedPath = resolvePathname(pathname);
+  const isPublic = isAuthPublicPath(resolvedPath);
 
   useEffect(() => {
     if (!authEnabled || isLoading || isAuthenticated) return;
-    if (isAuthPublicPath(pathname)) return;
 
-    const returnUrl = encodeURIComponent(pathname);
+    const path = resolvePathname(pathname);
+    if (!path || isAuthPublicPath(path)) return;
+
+    const returnUrl = encodeURIComponent(path);
     router.replace(`/login?returnUrl=${returnUrl}`);
   }, [authEnabled, isLoading, isAuthenticated, pathname, router]);
 
-  if (authEnabled && isLoading && !isAuthPublicPath(pathname)) {
+  if (isPublic) {
+    return <>{children}</>;
+  }
+
+  if (!resolvedPath || (authEnabled && isLoading)) {
     return (
       <div className="flex flex-1 items-center justify-center p-12 text-sm text-[var(--muted)]">
         Loading…
@@ -30,12 +41,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     );
   }
 
-  if (
-    authEnabled &&
-    !isLoading &&
-    !isAuthenticated &&
-    !isAuthPublicPath(pathname)
-  ) {
+  if (authEnabled && !isLoading && !isAuthenticated) {
     return null;
   }
 

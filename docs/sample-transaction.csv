@@ -1,0 +1,7 @@
+Transaction export sample
+Account / Bill,Category,Amount To Pay,Date Paid,Posting Status,Notes
+Whole Foods,Grocery,86.42,7/3/2026,posted,
+Shell Gas,Utility,54.18,7/5/2026,posted,
+Netflix,Subscription,15.99,7/8/2026,pending,Auto-renew
+Amazon Purchase,Shopping,129.00,7/10/2026,pending,
+Electric Bill,Utility,125.00,7/12/2026,pending,
