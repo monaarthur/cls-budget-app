@@ -76,6 +76,52 @@ export function defaultPaymentDateForAccount(
   return new Date(Date.UTC(year, month, clampedDay)).toISOString();
 }
 
+/** Day of month (1–31) from a payment date ISO string. */
+export function getDayOfMonthFromIso(
+  iso: string | null | undefined,
+): number | null {
+  const normalized = normalizeGridDateIso(iso);
+  if (!normalized) return null;
+  const date = new Date(normalized);
+  if (!Number.isFinite(date.getTime())) return null;
+  return date.getUTCDate();
+}
+
+/**
+ * Parse a day-of-month input. Digits only; returns null if empty or not 1–31.
+ * Month-specific validity is checked by {@link paymentDateFromDayOfMonth}.
+ */
+export function parseDayOfMonthInput(value: unknown): number | null {
+  if (value === "" || value === null || value === undefined) return null;
+  if (typeof value === "number") {
+    if (!Number.isInteger(value) || value < 1 || value > 31) return null;
+    return value;
+  }
+
+  const raw = String(value).trim();
+  if (!/^\d{1,2}$/.test(raw)) return null;
+  const day = Number.parseInt(raw, 10);
+  if (!Number.isFinite(day) || day < 1 || day > 31) return null;
+  return day;
+}
+
+/** Build a UTC payment date in the budget month for a valid day-of-month. */
+export function paymentDateFromDayOfMonth(
+  budgetStartPeriod: string,
+  day: number,
+): string | null {
+  const start = new Date(budgetStartPeriod);
+  if (!Number.isFinite(start.getTime())) return null;
+  if (!Number.isInteger(day) || day < 1 || day > 31) return null;
+
+  const year = start.getUTCFullYear();
+  const month = start.getUTCMonth();
+  const lastDayOfMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  if (day > lastDayOfMonth) return null;
+
+  return new Date(Date.UTC(year, month, day)).toISOString();
+}
+
 export function isFirstPaymentRowForAccount(
   row: BudgetGridRow,
   rows: BudgetGridRow[],

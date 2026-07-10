@@ -32,7 +32,7 @@ import {
   parseAndNormalizeGridDate,
   toUpdateAccountRequest,
 } from "@/features/accounts/utils/accountMapper";
-import { createEditableDateColDef, createEditableDateTextColDef } from "@/features/accounts/components/gridDateColumn";
+import { createEditableDateColDef } from "@/features/accounts/components/gridDateColumn";
 import type { AccountResponse } from "@/features/accounts/types/account";
 import { accountGridTheme } from "@/features/accounts/components/accountGridTheme";
 import {
@@ -73,7 +73,10 @@ import {
   buildBudgetGridRows,
   calculateOwed,
   getBudgetPaymentRowClass,
+  getDayOfMonthFromIso,
   isFirstPaymentRowForAccount,
+  parseDayOfMonthInput,
+  paymentDateFromDayOfMonth,
   toUpdatePaymentRequest,
   type BudgetGridRow,
 } from "@/features/budgets/utils/budgetGridMapper";
@@ -763,7 +766,9 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         field: "accountPaymentDay",
         headerName: "Payment day",
         editable: editableUnlessPinned(),
-        minWidth: 110,
+        width: 90,
+        minWidth: 70,
+        maxWidth: 110,
         filter: "agNumberColumnFilter",
         cellClass: "ag-cell-center",
         valueFormatter: (p) => formatPaymentDay(p.value),
@@ -775,7 +780,9 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         field: "amount",
         headerName: "Budgeted",
         editable: editableUnlessPinned(),
-        minWidth: 120,
+        width: 100,
+        minWidth: 90,
+        maxWidth: 120,
         ...currencyCol,
       },
       {
@@ -783,7 +790,9 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         field: "paymentMade",
         headerName: "Paid",
         editable: editableUnlessPinned(),
-        minWidth: 120,
+        width: 90,
+        minWidth: 80,
+        maxWidth: 110,
         ...currencyCol,
       },
       {
@@ -836,10 +845,57 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         width: 110,
         cellClass: "ag-cell-center",
       },
-      createEditableDateTextColDef<BudgetGridRow>("paymentDate", "Payment date", {
+      {
+        colId: "paymentDate",
+        headerName: "Due day",
         editable: editableUnlessPinned(),
-        minWidth: 130,
-      }),
+        width: 80,
+        minWidth: 70,
+        maxWidth: 100,
+        filter: "agNumberColumnFilter",
+        cellClass: "ag-cell-center",
+        cellEditor: "agNumberCellEditor",
+        cellEditorParams: (() => {
+          const start = budgetStartPeriod ? new Date(budgetStartPeriod) : null;
+          const lastDay =
+            start && Number.isFinite(start.getTime())
+              ? new Date(
+                  Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 0),
+                ).getUTCDate()
+              : 31;
+          return {
+            min: 1,
+            max: lastDay,
+            precision: 0,
+            showStepperButtons: false,
+          };
+        })(),
+        tooltipValueGetter: () =>
+          "Enter the day of the month (numbers only, valid for this budget month)",
+        valueGetter: (params: ValueGetterParams<BudgetGridRow>) =>
+          getDayOfMonthFromIso(params.data?.paymentDate),
+        valueFormatter: (params) => formatPaymentDay(params.value),
+        valueParser: (params: ValueParserParams<BudgetGridRow>) =>
+          parseDayOfMonthInput(params.newValue),
+        valueSetter: (params: ValueSetterParams<BudgetGridRow>) => {
+          if (!params.data || !budgetStartPeriod) return false;
+
+          const day = parseDayOfMonthInput(params.newValue);
+          if (day == null) return false;
+
+          const next = paymentDateFromDayOfMonth(budgetStartPeriod, day);
+          if (!next) return false;
+
+          if (normalizeGridDateIso(params.data.paymentDate) === next) {
+            return false;
+          }
+
+          params.data.paymentDate = next;
+          return true;
+        },
+        filterValueGetter: (params: ValueGetterParams<BudgetGridRow>) =>
+          getDayOfMonthFromIso(params.data?.paymentDate),
+      },
       createEditableDateColDef<BudgetGridRow>("clearedDate", "Cleared date", {
         editable: editableUnlessPinned(),
         minWidth: 130,
@@ -1045,6 +1101,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       },
     ],
     [
+      budgetStartPeriod,
       statusNames,
       statusByName,
       paymentSourceNames,
@@ -1150,13 +1207,11 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       if (!event.data) return;
 
       const colId = event.column.getColId();
-      if (colId !== "paymentDate" && colId !== "clearedDate") return;
+      if (colId !== "clearedDate") return;
 
       dateEditSnapshotRef.current.set(
         dateEditKey(event.data.budgetPaymentId, colId),
-        normalizeGridDateIso(
-          event.data[colId as "paymentDate" | "clearedDate"],
-        ),
+        normalizeGridDateIso(event.data.clearedDate),
       );
     },
     [],
@@ -1167,9 +1222,8 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       if (!event.data) return;
 
       const colId = event.column.getColId();
-      if (colId !== "paymentDate" && colId !== "clearedDate") return;
+      if (colId !== "clearedDate") return;
 
-      const field = colId as "paymentDate" | "clearedDate";
       const key = dateEditKey(event.data.budgetPaymentId, colId);
       const before =
         dateEditSnapshotRef.current.get(key) ??
@@ -1178,10 +1232,10 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
 
       const parsedFromEditor = parseAndNormalizeGridDate(event.value);
       if (parsedFromEditor != null) {
-        event.data[field] = parsedFromEditor;
+        event.data.clearedDate = parsedFromEditor;
       }
 
-      const after = normalizeGridDateIso(event.data[field]);
+      const after = normalizeGridDateIso(event.data.clearedDate);
       if (before === after) return;
 
       applyCellEdit(event.data, colId, event.api);
@@ -1195,10 +1249,11 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
 
       const changedColId = event.column.getColId();
 
-      if (
-        changedColId === "paymentDate" ||
-        changedColId === "clearedDate"
-      ) {
+      if (changedColId === "paymentDate") {
+        const before = parseDayOfMonthInput(event.oldValue);
+        const after = getDayOfMonthFromIso(event.data.paymentDate);
+        if (before === after) return;
+      } else if (changedColId === "clearedDate") {
         if (
           normalizeGridDateIso(event.oldValue) ===
           normalizeGridDateIso(event.newValue)

@@ -7,7 +7,7 @@ export const BUDGET_GRID_COLUMNS = [
   { colId: "owed", label: "Owed" },
   { colId: "budgetPaymentStatusName", label: "Status" },
   { colId: "isCleared", label: "Cleared" },
-  { colId: "paymentDate", label: "Payment date" },
+  { colId: "paymentDate", label: "Due day" },
   { colId: "clearedDate", label: "Cleared date" },
   { colId: "accountNumber", label: "Account number" },
   { colId: "accountBalance", label: "Balance" },

@@ -92,7 +92,7 @@ export function CopyBudgetDialog({
             </h2>
             <p className="mt-1 text-sm text-[var(--muted)]">
               Create a new budget from &ldquo;{budget.name}&rdquo; with its
-              accounts and payment amounts.
+              accounts, payment amounts, and due days.
             </p>
           </div>
           <button

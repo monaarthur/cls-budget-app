@@ -1,4 +1,5 @@
 using CLS.Budget.Application.Abstractions.Repositories;
+using CLS.Budget.Application.Budgets;
 using CLS.Budget.Domain;
 using CLS.Budget.Domain.Entities;
 using CLS.Budget.Infrastructure.Persistance;
@@ -99,7 +100,9 @@ public sealed class BudgetRepository(BudgetDbContext dbContext) : IBudgetReposit
                 Amount = payment.Amount,
                 BudgetPaymentStatusId = BudgetPaymentStatusIds.Scheduled,
                 IsCleared = false,
-                PaymentDate = newBudget.StartPeriod,
+                PaymentDate = BudgetPaymentDateMapper.MapToBudgetPeriod(
+                    payment.PaymentDate,
+                    newBudget.StartPeriod),
                 ClearedDate = null,
                 PaymentSourceId = payment.PaymentSourceId
             });
