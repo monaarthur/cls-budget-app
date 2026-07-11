@@ -3,6 +3,7 @@ export const GRID_COLUMNS = [
   { colId: "number", label: "Number" },
   { colId: "balance", label: "Balance" },
   { colId: "limit", label: "Limit" },
+  { colId: "interestRate", label: "APR" },
   { colId: "monthlyPayment", label: "Monthly" },
   { colId: "paymentDay", label: "Payment day" },
   { colId: "accountCategoryName", label: "Category" },
@@ -33,3 +34,6 @@ export const CREDIT_CARD_EXCLUDED_COLUMNS = new Set([
   "accountCategoryName",
   "accountOpenDate",
 ]);
+
+/** Not shown on the regular accounts grid (credit-card-only fields). */
+export const ACCOUNT_EXCLUDED_COLUMNS = new Set(["interestRate"]);

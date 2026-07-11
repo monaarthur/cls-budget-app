@@ -1,5 +1,6 @@
 import type { ColumnState, GridApi } from "ag-grid-community";
 import {
+  ACCOUNT_EXCLUDED_COLUMNS,
   CREDIT_CARD_EXCLUDED_COLUMNS,
   DEFAULT_HIDDEN_COLUMNS,
   GRID_COLUMNS,
@@ -8,7 +9,7 @@ import {
 const ACCOUNTS_GRID_NAMESPACE = "accounts-grid";
 const CREDIT_CARD_GRID_NAMESPACE = "credit-cards-grid";
 const ACCOUNTS_STORAGE_VERSION = 2;
-const CREDIT_CARD_STORAGE_VERSION = 4;
+const CREDIT_CARD_STORAGE_VERSION = 5;
 
 function storageKeys(namespace: string) {
   return {
@@ -34,7 +35,7 @@ function validColIds(namespace: string): Set<string> {
       ids.filter((colId) => !CREDIT_CARD_EXCLUDED_COLUMNS.has(colId)),
     );
   }
-  return new Set(ids);
+  return new Set(ids.filter((colId) => !ACCOUNT_EXCLUDED_COLUMNS.has(colId)));
 }
 
 export function defaultHiddenColumns(namespace: string): Set<string> {

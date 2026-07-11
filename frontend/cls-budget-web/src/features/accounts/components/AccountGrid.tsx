@@ -37,6 +37,7 @@ import { ColumnPicker } from "@/features/accounts/components/ColumnPicker";
 import { CreditCardNameCellRenderer } from "@/features/accounts/components/CreditCardNameCellRenderer";
 import { SyncAccountLogosButton } from "@/features/accounts/components/SyncAccountLogosButton";
 import {
+  ACCOUNT_EXCLUDED_COLUMNS,
   CREDIT_CARD_EXCLUDED_COLUMNS,
 } from "@/features/accounts/components/gridColumns";
 import {
@@ -80,6 +81,13 @@ function parseOptionalInteger(value: unknown): number | null {
   if (value === "" || value === null || value === undefined) return null;
   const n = Number.parseInt(String(value), 10);
   return Number.isFinite(n) ? n : null;
+}
+
+function formatApr(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "";
+  return `${n.toFixed(2)}%`;
 }
 
 const currencyFormatter = (params: ValueFormatterParams<AccountGridRow>) => {
@@ -200,6 +208,26 @@ export function AccountGrid({ creditCardOnly = false }: AccountGridProps) {
         editable: editableUnlessPinned(),
         minWidth: 120,
         ...currencyCol,
+      },
+      {
+        field: "interestRate",
+        headerName: "APR",
+        editable: editableUnlessPinned(),
+        width: 90,
+        minWidth: 80,
+        maxWidth: 110,
+        filter: "agNumberColumnFilter",
+        cellClass: "ag-cell-center",
+        cellEditor: "agNumberCellEditor",
+        cellEditorParams: {
+          min: 0,
+          max: 100,
+          precision: 2,
+          showStepperButtons: false,
+        },
+        valueFormatter: (p) => formatApr(p.value),
+        valueParser: (p: ValueParserParams) =>
+          parseOptionalNumber(p.newValue),
       },
       {
         field: "monthlyPayment",
@@ -332,7 +360,12 @@ export function AccountGrid({ creditCardOnly = false }: AccountGridProps) {
       },
     ];
 
-    if (!creditCardOnly) return defs;
+    if (!creditCardOnly) {
+      return defs.filter((column) => {
+        const colId = column.colId ?? column.field;
+        return !ACCOUNT_EXCLUDED_COLUMNS.has(String(colId));
+      });
+    }
 
     return defs.filter((column) => {
       const colId = column.colId ?? column.field;

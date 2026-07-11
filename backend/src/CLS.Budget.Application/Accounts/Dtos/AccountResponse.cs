@@ -20,4 +20,6 @@ public sealed class AccountResponse
     public DateTime? PaidOffDate { get; init; }
     public bool? IsCreditCard { get; init; }
     public int AccountCategoryId { get; init; }
+    /// <summary>Purchase APR percent (e.g. 22.99), from CreditCardDetail.</summary>
+    public decimal? InterestRate { get; init; }
 }

@@ -24,30 +24,37 @@ internal static class AccountMapper
         IsPaidOff = account.IsPaidOff,
         PaidOffDate = account.PaidOffDate,
         IsCreditCard = account.IsCreditCard,
-        AccountCategoryId = account.AccountCategoryId
+        AccountCategoryId = account.AccountCategoryId,
+        InterestRate = account.CreditCardDetail?.InterestRate
     };
 
-    public static Account ToEntity(CreateAccountRequest request) => new()
+    public static Account ToEntity(CreateAccountRequest request)
     {
-        Name = request.Name,
-        Number = request.Number,
-        Description = request.Description,
-        Balance = request.Balance,
-        Limit = request.Limit,
-        AccountOpenDate = request.AccountOpenDate,
-        MonthlyPayment = request.MonthlyPayment,
-        PaymentDay = request.PaymentDay,
-        Phone = request.Phone,
-        Email = request.Email,
-        Url = request.Url,
-        Username = request.Username,
-        Password = request.Password,
-        Notes = request.Notes,
-        IsPaidOff = request.IsPaidOff,
-        PaidOffDate = request.PaidOffDate,
-        IsCreditCard = request.IsCreditCard,
-        AccountCategoryId = request.AccountCategoryId
-    };
+        var account = new Account
+        {
+            Name = request.Name,
+            Number = request.Number,
+            Description = request.Description,
+            Balance = request.Balance,
+            Limit = request.Limit,
+            AccountOpenDate = request.AccountOpenDate,
+            MonthlyPayment = request.MonthlyPayment,
+            PaymentDay = request.PaymentDay,
+            Phone = request.Phone,
+            Email = request.Email,
+            Url = request.Url,
+            Username = request.Username,
+            Password = request.Password,
+            Notes = request.Notes,
+            IsPaidOff = request.IsPaidOff,
+            PaidOffDate = request.PaidOffDate,
+            IsCreditCard = request.IsCreditCard,
+            AccountCategoryId = request.AccountCategoryId
+        };
+
+        ApplyInterestRate(account, request.InterestRate);
+        return account;
+    }
 
     public static void ApplyUpdate(Account account, UpdateAccountRequest request)
     {
@@ -69,5 +76,21 @@ internal static class AccountMapper
         account.PaidOffDate = request.PaidOffDate;
         account.IsCreditCard = request.IsCreditCard;
         account.AccountCategoryId = request.AccountCategoryId;
+        ApplyInterestRate(account, request.InterestRate);
+    }
+
+    private static void ApplyInterestRate(Account account, decimal? interestRate)
+    {
+        if (account.CreditCardDetail is null)
+        {
+            if (interestRate is null && account.IsCreditCard != true)
+            {
+                return;
+            }
+
+            account.CreditCardDetail = new CreditCardDetail();
+        }
+
+        account.CreditCardDetail.InterestRate = interestRate;
     }
 }

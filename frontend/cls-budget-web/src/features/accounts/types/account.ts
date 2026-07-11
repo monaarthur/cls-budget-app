@@ -17,6 +17,8 @@ export interface AccountResponse {
   paidOffDate: string | null;
   isCreditCard: boolean | null;
   accountCategoryId: number;
+  /** Purchase APR percent (e.g. 22.99). */
+  interestRate: number | null;
 }
 
 export interface CreateAccountRequest {
@@ -38,6 +40,7 @@ export interface CreateAccountRequest {
   paidOffDate?: string | null;
   isCreditCard?: boolean | null;
   accountCategoryId: number;
+  interestRate?: number | null;
 }
 
 export type UpdateAccountRequest = CreateAccountRequest;

@@ -22,7 +22,9 @@ export function toUpdateAccountRequest(row: AccountGridRow): UpdateAccountReques
     notes: row.notes,
     isPaidOff: row.isPaidOff,
     paidOffDate: row.paidOffDate,
+    isCreditCard: row.isCreditCard,
     accountCategoryId: row.accountCategoryId,
+    interestRate: row.interestRate,
   };
 }
 

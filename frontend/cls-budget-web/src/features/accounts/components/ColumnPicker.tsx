@@ -5,14 +5,19 @@ import type { GridApi } from "ag-grid-community";
 import { Columns3 } from "lucide-react";
 import {
   CREDIT_CARD_EXCLUDED_COLUMNS,
+  ACCOUNT_EXCLUDED_COLUMNS,
   GRID_COLUMNS,
 } from "@/features/accounts/components/gridColumns";
 import { resetColumnState } from "@/features/accounts/components/gridColumnState";
 
 function gridColumnsForPicker(creditCardOnly: boolean) {
-  if (!creditCardOnly) return GRID_COLUMNS;
+  if (creditCardOnly) {
+    return GRID_COLUMNS.filter(
+      (column) => !CREDIT_CARD_EXCLUDED_COLUMNS.has(column.colId),
+    );
+  }
   return GRID_COLUMNS.filter(
-    (column) => !CREDIT_CARD_EXCLUDED_COLUMNS.has(column.colId),
+    (column) => !ACCOUNT_EXCLUDED_COLUMNS.has(column.colId),
   );
 }
 

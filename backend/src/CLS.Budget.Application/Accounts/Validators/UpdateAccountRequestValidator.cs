@@ -23,5 +23,8 @@ public sealed class UpdateAccountRequestValidator : AbstractValidator<UpdateAcco
         RuleFor(x => x.PaymentDay)
             .InclusiveBetween(1, 31)
             .When(x => x.PaymentDay.HasValue);
+        RuleFor(x => x.InterestRate)
+            .GreaterThanOrEqualTo(0)
+            .When(x => x.InterestRate.HasValue);
     }
 }
