@@ -48,10 +48,12 @@ import { AddBudgetAccountDialog } from "@/features/budgets/components/AddBudgetA
 import { AddBudgetPaymentDialog } from "@/features/budgets/components/AddBudgetPaymentDialog";
 import { AddIncomeDialog } from "@/features/incomes/components/AddIncomeDialog";
 import { AccountNameCellRenderer } from "@/features/budgets/components/AccountNameCellRenderer";
-import { BUDGET_DEFAULT_HIDDEN_COLUMNS } from "@/features/budgets/components/budgetGridColumns";
+import { BUDGET_GRID_MODE_LABELS, type BudgetGridMode } from "@/features/budgets/components/budgetGridColumns";
 import {
-  restoreBudgetColumnState,
+  applyBudgetGridMode,
+  applyDefaultBudgetColumnVisibility,
   saveBudgetColumnState,
+  saveBudgetGridMode,
 } from "@/features/budgets/components/budgetGridColumnState";
 import { budgetsApi } from "@/features/budgets/api/budgetsApi";
 import type { UpdateBudgetRequest } from "@/features/budgets/types/budget";
@@ -109,6 +111,23 @@ function parseOptionalInteger(value: unknown): number | null {
   if (value === "" || value === null || value === undefined) return null;
   const n = Number.parseInt(String(value), 10);
   return Number.isFinite(n) ? n : null;
+}
+
+function withHeaderTooltip<T>(def: ColDef<T>): ColDef<T> {
+  if (def.headerTooltip) return def;
+  if (typeof def.headerName !== "string" || !def.headerName) return def;
+  return { ...def, headerTooltip: def.headerName };
+}
+
+function autoSizeVisibleBudgetColumns(api: GridApi) {
+  const ids =
+    api
+      .getColumns()
+      ?.filter((column) => column.isVisible() && column.getColId() !== "actions")
+      .map((column) => column.getColId()) ?? [];
+  if (ids.length > 0) {
+    api.autoSizeColumns(ids, false);
+  }
 }
 
 const currencyFormatter = (params: ValueFormatterParams<BudgetGridRow>) => {
@@ -277,10 +296,24 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   const payPeriodFilterRef = useRef<PayPeriodFilter | null>(null);
   const dateEditSnapshotRef = useRef<Map<string, string | null>>(new Map());
   const [dirtyRevision, setDirtyRevision] = useState(0);
+  const [gridMode, setGridMode] = useState<BudgetGridMode | null>(null);
   const [status, setStatus] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
+
+  const applyMode = useCallback(
+    (mode: BudgetGridMode, api?: GridApi | null) => {
+      const targetApi = api ?? gridApi ?? gridRef.current?.api;
+      if (!targetApi) return;
+      applyBudgetGridMode(targetApi, mode);
+      autoSizeVisibleBudgetColumns(targetApi);
+      saveBudgetGridMode(mode);
+      setGridMode(mode);
+      saveBudgetColumnState(targetApi);
+    },
+    [gridApi],
+  );
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -389,6 +422,11 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (loading || !gridApi) return;
+    autoSizeVisibleBudgetColumns(gridApi);
+  }, [loading, rowData.length, gridApi, gridMode]);
 
   const { totalBudgeted, totalPaid, clearedCount, paymentPeriodSummaries } =
     useMemo(() => {
@@ -728,7 +766,9 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         field: "accountName",
         headerName: "Account",
         filter: "agTextColumnFilter",
-        minWidth: 180,
+        width: 160,
+        minWidth: 120,
+        maxWidth: 260,
         pinned: "left",
         cellClass: "ag-cell-name",
         editable: false,
@@ -738,7 +778,9 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         colId: "accountCategoryName",
         headerName: "Category",
         filter: "agTextColumnFilter",
-        minWidth: 150,
+        width: 110,
+        minWidth: 90,
+        maxWidth: 160,
         cellClass: "ag-cell-category",
         editable: false,
         valueGetter: (params: ValueGetterParams<BudgetGridRow>) =>
@@ -764,7 +806,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       {
         colId: "accountPaymentDay",
         field: "accountPaymentDay",
-        headerName: "Payment day",
+        headerName: "Acct payment day",
         editable: editableUnlessPinned(),
         width: 90,
         minWidth: 70,
@@ -780,8 +822,8 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         field: "amount",
         headerName: "Budgeted",
         editable: editableUnlessPinned(),
-        width: 100,
-        minWidth: 90,
+        width: 95,
+        minWidth: 80,
         maxWidth: 120,
         ...currencyCol,
       },
@@ -790,8 +832,8 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         field: "paymentMade",
         headerName: "Paid",
         editable: editableUnlessPinned(),
-        width: 90,
-        minWidth: 80,
+        width: 85,
+        minWidth: 70,
         maxWidth: 110,
         ...currencyCol,
       },
@@ -799,7 +841,9 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         colId: "owed",
         headerName: "Owed",
         editable: false,
-        minWidth: 120,
+        width: 85,
+        minWidth: 70,
+        maxWidth: 110,
         filter: "agNumberColumnFilter",
         cellClass: "ag-cell-currency",
         headerClass: "ag-cell-currency-header",
@@ -818,7 +862,9 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         headerName: "Status",
         editable: editableUnlessPinned(),
         filter: "agTextColumnFilter",
-        minWidth: 130,
+        width: 100,
+        minWidth: 90,
+        maxWidth: 120,
         cellClass: "ag-cell-category",
         valueGetter: (params: ValueGetterParams<BudgetGridRow>) =>
           params.data?.budgetPaymentStatusName ?? "",
@@ -842,16 +888,18 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         editable: editableUnlessPinned(),
         cellEditor: "agCheckboxCellEditor",
         filter: true,
-        width: 110,
+        width: 85,
+        minWidth: 75,
+        maxWidth: 100,
         cellClass: "ag-cell-center",
       },
       {
         colId: "paymentDate",
-        headerName: "Due day",
+        headerName: "Payment day",
         editable: editableUnlessPinned(),
-        width: 80,
+        width: 90,
         minWidth: 70,
-        maxWidth: 100,
+        maxWidth: 110,
         filter: "agNumberColumnFilter",
         cellClass: "ag-cell-center",
         cellEditor: "agNumberCellEditor",
@@ -898,21 +946,27 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       },
       createEditableDateColDef<BudgetGridRow>("clearedDate", "Cleared date", {
         editable: editableUnlessPinned(),
-        minWidth: 130,
+        width: 110,
+        minWidth: 100,
+        maxWidth: 130,
       }),
       {
         colId: "accountNumber",
         field: "accountNumber",
         headerName: "Account number",
         filter: "agTextColumnFilter",
-        minWidth: 120,
+        width: 110,
+        minWidth: 90,
+        maxWidth: 140,
         editable: false,
       },
       {
         colId: "accountBalance",
         field: "accountBalance",
         headerName: "Balance",
-        minWidth: 120,
+        width: 95,
+        minWidth: 80,
+        maxWidth: 120,
         editable: false,
         ...currencyCol,
       },
@@ -920,7 +974,9 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         colId: "accountMonthlyPayment",
         field: "accountMonthlyPayment",
         headerName: "Monthly (account)",
-        minWidth: 130,
+        width: 120,
+        minWidth: 100,
+        maxWidth: 150,
         editable: false,
         ...currencyCol,
         valueFormatter: (p) =>
@@ -935,7 +991,9 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         headerName: "Payment source",
         editable: editableUnlessPinned(),
         filter: "agTextColumnFilter",
-        minWidth: 160,
+        width: 130,
+        minWidth: 110,
+        maxWidth: 180,
         cellClass: "ag-cell-category",
         valueGetter: (params: ValueGetterParams<BudgetGridRow>) => {
           if (!params.data?.paymentSourceId) return PAYMENT_SOURCE_NONE;
@@ -987,7 +1045,9 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         headerName: "Income source",
         editable: editableUnlessPinned(),
         filter: "agTextColumnFilter",
-        minWidth: 160,
+        width: 120,
+        minWidth: 100,
+        maxWidth: 180,
         cellClass: "ag-cell-category",
         valueGetter: (params: ValueGetterParams<BudgetGridRow>) => {
           if (!params.data?.incomeSourceId) return INCOME_SOURCE_NONE;
@@ -1031,7 +1091,9 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         colId: "actions",
         headerName: "",
         pinned: "right",
-        width: 260,
+        width: 200,
+        minWidth: 180,
+        maxWidth: 240,
         sortable: false,
         filter: false,
         floatingFilter: false,
@@ -1075,9 +1137,9 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
                   )
                 }
                 className="rounded-full border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
-                title="Delete this payment"
+                title="Delete Payment"
               >
-                Delete Payment
+                Delete
               </button>
               {showRemoveAccount ? (
                 <button
@@ -1090,16 +1152,16 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
                     )
                   }
                   className="rounded-full border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
-                  title="Remove account from budget"
+                  title="Remove Account"
                 >
-                  Remove Acct
+                  Remove
                 </button>
               ) : null}
             </div>
           );
         },
       },
-    ],
+    ].map(withHeaderTooltip),
     [
       budgetStartPeriod,
       statusNames,
@@ -1121,7 +1183,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       filter: true,
       floatingFilter: true,
       resizable: true,
-      minWidth: 100,
+      minWidth: 70,
       suppressHeaderMenuButton: false,
       lockVisible: false,
       hide: false,
@@ -1364,11 +1426,11 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   const onGridReady = (event: GridReadyEvent) => {
     setGridApi(event.api);
 
-    const restored = restoreBudgetColumnState(event.api);
-    if (!restored) {
-      event.api.setColumnsVisible([...BUDGET_DEFAULT_HIDDEN_COLUMNS], false);
-      event.api.autoSizeColumns(["accountName", "accountCategoryName"], false);
-    }
+    // No mode on load — show the default column set.
+    saveBudgetGridMode(null);
+    setGridMode(null);
+    applyDefaultBudgetColumnVisibility(event.api);
+    autoSizeVisibleBudgetColumns(event.api);
 
     columnStateReadyRef.current = true;
     refreshPinnedTotals(event.api);
@@ -1550,6 +1612,31 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
             />
           </div>
 
+          <div
+            className="inline-flex rounded-full border border-[var(--border)] bg-white p-1"
+            role="group"
+            aria-label="Budget grid mode"
+          >
+            {(["budget", "payment"] as const).map((mode) => {
+              const active = gridMode === mode;
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => applyMode(mode)}
+                  aria-pressed={active}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                    active
+                      ? "bg-[var(--link)] text-white"
+                      : "text-[var(--muted)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  {BUDGET_GRID_MODE_LABELS[mode]}
+                </button>
+              );
+            })}
+          </div>
+
           <div className="account-grid-toolbar-actions">
             <button
               type="button"
@@ -1678,6 +1765,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
             onSortChanged={scheduleColumnStateSave}
             loading={loading}
             quickFilterText={quickFilter}
+            tooltipShowDelay={400}
             singleClickEdit={false}
             stopEditingWhenCellsLoseFocus={true}
             undoRedoCellEditing={true}

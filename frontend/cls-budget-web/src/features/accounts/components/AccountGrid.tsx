@@ -83,6 +83,12 @@ function parseOptionalInteger(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function withHeaderTooltip<T>(def: ColDef<T>): ColDef<T> {
+  if (def.headerTooltip) return def;
+  if (typeof def.headerName !== "string" || !def.headerName) return def;
+  return { ...def, headerTooltip: def.headerName };
+}
+
 function formatApr(value: unknown): string {
   if (value === null || value === undefined || value === "") return "";
   const n = Number(value);
@@ -361,16 +367,20 @@ export function AccountGrid({ creditCardOnly = false }: AccountGridProps) {
     ];
 
     if (!creditCardOnly) {
-      return defs.filter((column) => {
-        const colId = column.colId ?? column.field;
-        return !ACCOUNT_EXCLUDED_COLUMNS.has(String(colId));
-      });
+      return defs
+        .filter((column) => {
+          const colId = column.colId ?? column.field;
+          return !ACCOUNT_EXCLUDED_COLUMNS.has(String(colId));
+        })
+        .map(withHeaderTooltip);
     }
 
-    return defs.filter((column) => {
-      const colId = column.colId ?? column.field;
-      return !CREDIT_CARD_EXCLUDED_COLUMNS.has(String(colId));
-    });
+    return defs
+      .filter((column) => {
+        const colId = column.colId ?? column.field;
+        return !CREDIT_CARD_EXCLUDED_COLUMNS.has(String(colId));
+      })
+      .map(withHeaderTooltip);
   }, [creditCardOnly, logoVersion]);
 
   const defaultColDef = useMemo<ColDef>(
