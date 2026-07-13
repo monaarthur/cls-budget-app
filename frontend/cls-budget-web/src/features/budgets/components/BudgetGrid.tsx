@@ -794,8 +794,8 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         comparator: (
           _valueA: string | null | undefined,
           _valueB: string | null | undefined,
-          nodeA,
-          nodeB,
+          nodeA: IRowNode<BudgetGridRow>,
+          nodeB: IRowNode<BudgetGridRow>,
         ) => {
           const a = nodeA.data;
           const b = nodeB.data;
