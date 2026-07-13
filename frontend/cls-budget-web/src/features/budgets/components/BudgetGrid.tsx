@@ -791,7 +791,12 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
           params.data
             ? getAccountCategoryName(params.data.accountCategoryId)
             : "",
-        comparator: (_valueA, _valueB, nodeA, nodeB) => {
+        comparator: (
+          _valueA: string | null | undefined,
+          _valueB: string | null | undefined,
+          nodeA,
+          nodeB,
+        ) => {
           const a = nodeA.data;
           const b = nodeB.data;
           if (!a || !b) return 0;
