@@ -760,20 +760,21 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   const incomeRemaining = Math.max(0, incomeTotal - incomeAllocated);
 
   const columnDefs = useMemo<ColDef<BudgetGridRow>[]>(
-    () => [
-      {
-        colId: "accountName",
-        field: "accountName",
-        headerName: "Account",
-        filter: "agTextColumnFilter",
-        width: 160,
-        minWidth: 120,
-        maxWidth: 260,
-        pinned: "left",
-        cellClass: "ag-cell-name",
-        editable: false,
-        cellRenderer: AccountNameCellRenderer,
-      },
+    () =>
+      ([
+        {
+          colId: "accountName",
+          field: "accountName",
+          headerName: "Account",
+          filter: "agTextColumnFilter",
+          width: 160,
+          minWidth: 120,
+          maxWidth: 260,
+          pinned: "left",
+          cellClass: "ag-cell-name",
+          editable: false,
+          cellRenderer: AccountNameCellRenderer,
+        },
       {
         colId: "accountCategoryName",
         headerName: "Category",
@@ -818,7 +819,8 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         maxWidth: 110,
         filter: "agNumberColumnFilter",
         cellClass: "ag-cell-center",
-        valueFormatter: (p) => formatPaymentDay(p.value),
+        valueFormatter: (p: ValueFormatterParams<BudgetGridRow>) =>
+          formatPaymentDay(p.value),
         valueParser: (p: ValueParserParams) =>
           parseOptionalInteger(p.newValue),
       },
@@ -927,7 +929,8 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
           "Enter the day of the month (numbers only, valid for this budget month)",
         valueGetter: (params: ValueGetterParams<BudgetGridRow>) =>
           getDayOfMonthFromIso(params.data?.paymentDate),
-        valueFormatter: (params) => formatPaymentDay(params.value),
+        valueFormatter: (params: ValueFormatterParams<BudgetGridRow>) =>
+          formatPaymentDay(params.value),
         valueParser: (params: ValueParserParams<BudgetGridRow>) =>
           parseDayOfMonthInput(params.newValue),
         valueSetter: (params: ValueSetterParams<BudgetGridRow>) => {
@@ -984,7 +987,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         maxWidth: 150,
         editable: false,
         ...currencyCol,
-        valueFormatter: (p) =>
+        valueFormatter: (p: ValueFormatterParams<BudgetGridRow>) =>
           p.value === null || p.value === undefined
             ? ""
             : formatCurrencyDetailed(Number(p.value)),
@@ -1166,7 +1169,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
           );
         },
       },
-    ].map(withHeaderTooltip),
+    ] as ColDef<BudgetGridRow>[]).map(withHeaderTooltip),
     [
       budgetStartPeriod,
       statusNames,
@@ -1782,7 +1785,6 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
             paginationPageSize={25}
             paginationPageSizeSelector={[10, 25, 50, 100]}
             suppressDragLeaveHidesColumns={false}
-            tooltipShowDelay={400}
           />
         </div>
       </div>
