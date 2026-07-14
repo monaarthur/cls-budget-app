@@ -203,6 +203,7 @@ export function getBudgetStatusRowClass(statusName: string): string {
       return "budget-row-unassigned";
     case "pending":
     case "scheduled":
+    case "scheduled online":
       return "budget-row-scheduled";
     case "paid":
       return "budget-row-paid";

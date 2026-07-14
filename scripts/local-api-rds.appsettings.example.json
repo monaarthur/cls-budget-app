@@ -13,5 +13,22 @@
   "Admin": {
     "ApiKey": "REPLACE_WITH_PROD_ADMIN_KEY_OR_ANY_SECRET_FOR_LOCAL_INVITES"
   },
+  "Resilience": {
+    "Smtp": {
+      "MaxRetryAttempts": 3,
+      "DelayMilliseconds": 500,
+      "TimeoutSeconds": 30
+    },
+    "Database": {
+      "MaxRetryCount": 3,
+      "MaxRetryDelaySeconds": 30
+    },
+    "Http": {
+      "ClientName": "ExternalApi",
+      "AttemptTimeoutSeconds": 10,
+      "TotalRequestTimeoutSeconds": 30,
+      "MaxRetryAttempts": 3
+    }
+  },
   "Urls": "http://localhost:5123"
 }

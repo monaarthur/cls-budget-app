@@ -9,6 +9,7 @@ internal static class BudgetPaymentStatusMapper
         {
             "paid" => BudgetPaymentStatusIds.Paid,
             "scheduled" => BudgetPaymentStatusIds.Scheduled,
+            "scheduled online" => BudgetPaymentStatusIds.ScheduledOnline,
             "failed" => BudgetPaymentStatusIds.Failed,
             "overdue" => BudgetPaymentStatusIds.Overdue,
             "planned" or "hold" or "" or null => BudgetPaymentStatusIds.Scheduled,

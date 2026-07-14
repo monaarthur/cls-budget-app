@@ -1,17 +1,22 @@
 using System.Net;
 using System.Net.Mail;
 using CLS.Budget.Application.Abstractions;
+using CLS.Budget.Infrastructure.Resilience;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Polly;
+using Polly.Registry;
 
 namespace CLS.Budget.Infrastructure.Auth;
 
 /// <summary>
 /// Sends password reset links via SMTP (e.g. Gmail). Falls back to logging when SMTP is not configured.
+/// Transient SMTP failures are retried via the Polly "smtp" resilience pipeline.
 /// </summary>
 public sealed class SmtpPasswordResetNotifier(
     IOptions<PasswordResetOptions> passwordResetOptions,
     IOptions<SmtpOptions> smtpOptions,
+    ResiliencePipelineProvider<string> pipelineProvider,
     ILogger<SmtpPasswordResetNotifier> logger) : IPasswordResetNotifier
 {
     private readonly PasswordResetOptions _passwordReset = passwordResetOptions.Value;
@@ -68,13 +73,19 @@ public sealed class SmtpPasswordResetNotifier(
             };
             message.To.Add(email);
 
-            using var client = new SmtpClient(_smtp.Host, _smtp.Port)
-            {
-                EnableSsl = _smtp.UseStartTls,
-                Credentials = new NetworkCredential(_smtp.Username, _smtp.Password)
-            };
+            var pipeline = pipelineProvider.GetPipeline(ResiliencePipelineNames.Smtp);
+            await pipeline.ExecuteAsync(
+                async ct =>
+                {
+                    using var client = new SmtpClient(_smtp.Host, _smtp.Port)
+                    {
+                        EnableSsl = _smtp.UseStartTls,
+                        Credentials = new NetworkCredential(_smtp.Username, _smtp.Password)
+                    };
 
-            await client.SendMailAsync(message, cancellationToken);
+                    await client.SendMailAsync(message, ct);
+                },
+                cancellationToken);
 
             logger.LogInformation("Password reset email sent to {Email}", email);
         }

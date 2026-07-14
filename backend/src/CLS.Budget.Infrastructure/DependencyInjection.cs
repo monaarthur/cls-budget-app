@@ -4,6 +4,7 @@ using CLS.Budget.Application.Abstractions.Services;
 using CLS.Budget.Infrastructure.Auth;
 using CLS.Budget.Infrastructure.Persistance;
 using CLS.Budget.Infrastructure.Repositories;
+using CLS.Budget.Infrastructure.Resilience;
 using CLS.Budget.Infrastructure.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -22,9 +23,24 @@ public static class DependencyInjection
             ?? throw new InvalidOperationException(
                 "Connection string 'BudgetDatabase' is not configured.");
 
+        var databaseResilience = configuration
+            .GetSection(ResilienceOptions.SectionName)
+            .Get<ResilienceOptions>()
+            ?.Database
+            ?? new DatabaseResilienceOptions();
+
         services.AddDbContext<BudgetDbContext>(options =>
             options.UseNpgsql(connectionString, npgsql =>
-                npgsql.MigrationsAssembly("CLS.Budget.Migration")));
+            {
+                npgsql.MigrationsAssembly("CLS.Budget.Migration");
+                npgsql.EnableRetryOnFailure(
+                    maxRetryCount: Math.Max(0, databaseResilience.MaxRetryCount),
+                    maxRetryDelay: TimeSpan.FromSeconds(
+                        Math.Max(1, databaseResilience.MaxRetryDelaySeconds)),
+                    errorCodesToAdd: null);
+            }));
+
+        services.AddApplicationResilience(configuration);
 
         // Fallback tenant context for non-HTTP hosts (import CLI, design-time).
         // The API replaces this with an HTTP/claims-based implementation.

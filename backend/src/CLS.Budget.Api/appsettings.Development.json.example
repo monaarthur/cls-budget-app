@@ -21,5 +21,22 @@
     "Password": "YOUR_GMAIL_APP_PASSWORD",
     "FromAddress": "you@gmail.com",
     "FromDisplayName": "CLS Budget"
+  },
+  "Resilience": {
+    "Smtp": {
+      "MaxRetryAttempts": 3,
+      "DelayMilliseconds": 500,
+      "TimeoutSeconds": 30
+    },
+    "Database": {
+      "MaxRetryCount": 3,
+      "MaxRetryDelaySeconds": 30
+    },
+    "Http": {
+      "ClientName": "ExternalApi",
+      "AttemptTimeoutSeconds": 10,
+      "TotalRequestTimeoutSeconds": 30,
+      "MaxRetryAttempts": 3
+    }
   }
 }

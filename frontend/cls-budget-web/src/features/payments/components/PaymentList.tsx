@@ -16,6 +16,7 @@ const STATUS_FILTERS = [
   "all",
   "Pending",
   "Scheduled",
+  "Scheduled Online",
   "Paid",
   "Failed",
   "Overdue",

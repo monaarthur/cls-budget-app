@@ -11,4 +11,5 @@ public static class BudgetPaymentStatusIds
     public const int Failed = 4;
     public const int Overdue = 5;
     public const int Unassigned = 6;
+    public const int ScheduledOnline = 7;
 }

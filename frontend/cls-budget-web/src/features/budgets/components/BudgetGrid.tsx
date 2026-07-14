@@ -748,6 +748,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       if (
         status === "pending" ||
         status === "scheduled" ||
+        status === "scheduled online" ||
         status === "overdue" ||
         status === "failed"
       ) {

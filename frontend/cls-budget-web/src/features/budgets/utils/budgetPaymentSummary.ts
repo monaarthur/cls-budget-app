@@ -81,7 +81,9 @@ export function normalizeTrackedStatus(
   const normalized = statusName.trim().toLowerCase();
   if (normalized === "pending") return "pending";
   if (normalized === "paid") return "paid";
-  if (normalized === "scheduled") return "scheduled";
+  if (normalized === "scheduled" || normalized === "scheduled online") {
+    return "scheduled";
+  }
   return null;
 }
 
