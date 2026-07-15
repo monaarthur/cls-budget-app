@@ -14,6 +14,8 @@ export const BUDGET_GRID_COLUMNS = [
   { colId: "accountMonthlyPayment", label: "Monthly (account)" },
   { colId: "paymentSourceId", label: "Payment source" },
   { colId: "incomeSourceId", label: "Income source" },
+  { colId: "notes", label: "Line notes" },
+  { colId: "accountNotes", label: "Account notes" },
 ] as const;
 
 export const BUDGET_DEFAULT_HIDDEN_COLUMNS = new Set([
@@ -38,6 +40,8 @@ export const BUDGET_GRID_MODE_COLUMNS: Record<
     "amount",
     "budgetPaymentStatusName",
     "paymentMade",
+    "notes",
+    "accountNotes",
     "actions",
   ],
   payment: [
@@ -47,6 +51,7 @@ export const BUDGET_GRID_MODE_COLUMNS: Record<
     "budgetPaymentStatusName",
     "paymentMade",
     "isCleared",
+    "notes",
     "actions",
   ],
 };

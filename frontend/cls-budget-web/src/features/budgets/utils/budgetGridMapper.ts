@@ -15,6 +15,8 @@ export interface BudgetGridRow extends PaymentResponse {
   accountBalance: number;
   accountMonthlyPayment: number | null;
   accountPaymentDay: number | null;
+  /** Account-level notes shared across all line items for this account. */
+  accountNotes: string | null;
 }
 
 export function buildBudgetGridRows(
@@ -34,6 +36,8 @@ export function buildBudgetGridRows(
         accountBalance: account?.balance ?? 0,
         accountMonthlyPayment: account?.monthlyPayment ?? null,
         accountPaymentDay: account?.paymentDay ?? null,
+        accountNotes: account?.notes ?? null,
+        notes: payment.notes ?? null,
       };
     }),
   );
@@ -188,6 +192,7 @@ export function toUpdatePaymentRequest(
     clearedDate: normalizeGridDateIso(row.clearedDate),
     paymentSourceId: row.paymentSourceId,
     incomeSourceId: row.incomeSourceId ?? null,
+    notes: row.notes?.trim() ? row.notes.trim() : null,
   };
 }
 

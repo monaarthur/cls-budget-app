@@ -1097,6 +1097,42 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         },
       },
       {
+        colId: "notes",
+        field: "notes",
+        headerName: "Line notes",
+        editable: editableUnlessPinned(),
+        filter: "agTextColumnFilter",
+        width: 180,
+        minWidth: 120,
+        maxWidth: 320,
+        cellClass: "ag-cell-name",
+        tooltipField: "notes",
+        valueSetter: (params: ValueSetterParams<BudgetGridRow>) => {
+          if (!params.data) return false;
+          const next = String(params.newValue ?? "").trim();
+          params.data.notes = next.length > 0 ? next : null;
+          return true;
+        },
+      },
+      {
+        colId: "accountNotes",
+        field: "accountNotes",
+        headerName: "Account notes",
+        editable: editableUnlessPinned(),
+        filter: "agTextColumnFilter",
+        width: 180,
+        minWidth: 120,
+        maxWidth: 320,
+        cellClass: "ag-cell-name",
+        tooltipField: "accountNotes",
+        valueSetter: (params: ValueSetterParams<BudgetGridRow>) => {
+          if (!params.data) return false;
+          const next = String(params.newValue ?? "").trim();
+          params.data.accountNotes = next.length > 0 ? next : null;
+          return true;
+        },
+      },
+      {
         colId: "actions",
         headerName: "",
         pinned: "right",
@@ -1230,16 +1266,50 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
 
   const applyCellEdit = useCallback(
     (data: BudgetGridRow, colId: string, api: GridApi) => {
-      if (colId === "accountPaymentDay") {
+      if (colId === "accountPaymentDay" || colId === "accountNotes") {
         dirtyAccountIds.current.add(data.accountId);
+
+        const account = accountsByIdRef.current.get(data.accountId);
+        if (account) {
+          accountsByIdRef.current.set(data.accountId, {
+            ...account,
+            paymentDay:
+              colId === "accountPaymentDay"
+                ? data.accountPaymentDay
+                : account.paymentDay,
+            notes:
+              colId === "accountNotes" ? data.accountNotes : account.notes,
+          });
+        }
       } else {
         dirtyIds.current.add(data.budgetPaymentId);
       }
 
       setRowData((prev) =>
-        prev.map((row) =>
-          row.budgetPaymentId === data.budgetPaymentId ? { ...data } : row,
-        ),
+        prev.map((row) => {
+          if (colId === "accountNotes" && row.accountId === data.accountId) {
+            return {
+              ...row,
+              accountNotes: data.accountNotes,
+              ...(row.budgetPaymentId === data.budgetPaymentId ? data : {}),
+            };
+          }
+
+          if (
+            colId === "accountPaymentDay" &&
+            row.accountId === data.accountId
+          ) {
+            return {
+              ...row,
+              accountPaymentDay: data.accountPaymentDay,
+              ...(row.budgetPaymentId === data.budgetPaymentId ? data : {}),
+            };
+          }
+
+          return row.budgetPaymentId === data.budgetPaymentId
+            ? { ...data }
+            : row;
+        }),
       );
 
       setPendingCount(
@@ -1255,7 +1325,9 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
           colId === "paymentMade" ||
           colId === "paymentSourceId" ||
           colId === "incomeSourceId" ||
-          colId === "budgetPaymentStatusName"
+          colId === "budgetPaymentStatusName" ||
+          colId === "notes" ||
+          colId === "accountNotes"
         ) {
           api.refreshCells({
             rowNodes: [node],
@@ -1263,6 +1335,25 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
           });
         }
         api.redrawRows({ rowNodes: [node] });
+      }
+
+      if (colId === "accountNotes") {
+        const relatedNodes: IRowNode<BudgetGridRow>[] = [];
+        api.forEachNode((rowNode) => {
+          if (
+            rowNode.data?.accountId === data.accountId &&
+            rowNode.data.budgetPaymentId !== data.budgetPaymentId
+          ) {
+            relatedNodes.push(rowNode);
+          }
+        });
+        if (relatedNodes.length > 0) {
+          api.refreshCells({
+            rowNodes: relatedNodes,
+            columns: ["accountNotes", "accountName"],
+          });
+          api.redrawRows({ rowNodes: relatedNodes });
+        }
       }
 
       refreshPinnedTotals(api);
@@ -1367,6 +1458,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
             toUpdateAccountRequest({
               ...account,
               paymentDay: row.accountPaymentDay,
+              notes: row.accountNotes,
             }),
           );
         }),

@@ -22,4 +22,5 @@ public sealed class PaymentResponse
     public int? PaymentSourceId { get; init; }
     public int? IncomeSourceId { get; init; }
     public string? IncomeSourceName { get; init; }
+    public string? Notes { get; init; }
 }

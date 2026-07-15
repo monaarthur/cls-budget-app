@@ -161,6 +161,7 @@ public class BudgetDbContext(DbContextOptions<BudgetDbContext> options, ITenantC
             e.HasKey(x => x.BudgetPaymentId);
             e.Property(x => x.PaymentMade).HasColumnType("numeric(18,2)");
             e.Property(x => x.Amount).HasColumnType("numeric(18,2)");
+            e.Property(x => x.Notes).HasMaxLength(1000);
             e.HasOne(x => x.BudgetPaymentStatus)
                 .WithMany()
                 .HasForeignKey(x => x.BudgetPaymentStatusId)

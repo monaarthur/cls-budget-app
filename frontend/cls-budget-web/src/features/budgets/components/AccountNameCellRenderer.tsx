@@ -1,7 +1,7 @@
 "use client";
 
 import type { ICellRendererParams } from "ag-grid-community";
-import { TriangleAlert } from "lucide-react";
+import { StickyNote, TriangleAlert } from "lucide-react";
 import {
   needsPaymentSourceUpdate,
   type BudgetGridRow,
@@ -15,10 +15,54 @@ export function AccountNameCellRenderer(
   if (!params.data) return null;
 
   const showWarning = needsPaymentSourceUpdate(params.data);
+  const accountNotes = params.data.accountNotes?.trim() ?? "";
+  const lineNotes = params.data.notes?.trim() ?? "";
+  const hasAccountNotes = accountNotes.length > 0;
+  const hasLineNotes = lineNotes.length > 0;
 
   return (
     <div className="flex min-w-0 items-center gap-1.5">
       <span className="truncate">{params.data.accountName}</span>
+      {hasAccountNotes || hasLineNotes ? (
+        <span
+          className="budget-notes-indicator shrink-0"
+          tabIndex={0}
+          aria-label={
+            hasAccountNotes
+              ? `Account notes: ${accountNotes}`
+              : `Line notes: ${lineNotes}`
+          }
+        >
+          <StickyNote
+            size={14}
+            strokeWidth={2.25}
+            className="text-sky-300"
+            aria-hidden
+          />
+          <span className="budget-notes-indicator-tooltip" role="tooltip">
+            {hasAccountNotes ? (
+              <>
+                <span className="budget-notes-indicator-tooltip-label">
+                  Account notes
+                </span>
+                <span className="budget-notes-indicator-tooltip-line">
+                  {accountNotes}
+                </span>
+              </>
+            ) : null}
+            {hasLineNotes ? (
+              <>
+                <span className="budget-notes-indicator-tooltip-label">
+                  Line notes
+                </span>
+                <span className="budget-notes-indicator-tooltip-line">
+                  {lineNotes}
+                </span>
+              </>
+            ) : null}
+          </span>
+        </span>
+      ) : null}
       {showWarning ? (
         <span
           className="budget-payment-source-warning shrink-0"

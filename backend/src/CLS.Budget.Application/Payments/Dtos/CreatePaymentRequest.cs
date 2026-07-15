@@ -19,4 +19,5 @@ public sealed class CreatePaymentRequest
     public DateTime? ClearedDate { get; init; }
     public int? PaymentSourceId { get; init; }
     public int? IncomeSourceId { get; init; }
+    public string? Notes { get; init; }
 }

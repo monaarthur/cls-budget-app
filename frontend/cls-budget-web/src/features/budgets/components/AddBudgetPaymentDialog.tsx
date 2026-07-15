@@ -51,6 +51,7 @@ export function AddBudgetPaymentDialog({
   const [budgetPaymentStatusId, setBudgetPaymentStatusId] = useState<number>(
     defaultStatusId,
   );
+  const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -118,6 +119,7 @@ export function AddBudgetPaymentDialog({
     setError(null);
 
     try {
+      const trimmedNotes = notes.trim();
       await paymentsApi.create({
         budgetId,
         accountId,
@@ -126,6 +128,7 @@ export function AddBudgetPaymentDialog({
         budgetPaymentStatusId,
         isCleared: false,
         paymentDate: dateInputToIso(paymentDate),
+        notes: trimmedNotes.length > 0 ? trimmedNotes : null,
       });
       onAdded(selectedAccount?.name ?? "Account");
       onClose();
@@ -270,6 +273,24 @@ export function AddBudgetPaymentDialog({
                     </option>
                   ))}
                 </select>
+              </label>
+
+              <label className="block text-sm">
+                <span className="mb-1.5 block font-medium">Line notes</span>
+                <textarea
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  disabled={submitting}
+                  rows={2}
+                  maxLength={1000}
+                  placeholder="Optional note for this payment line"
+                  className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2.5 text-sm"
+                />
+                {selectedAccount?.notes?.trim() ? (
+                  <span className="mt-1.5 block text-xs text-[var(--muted)]">
+                    Account notes: {selectedAccount.notes.trim()}
+                  </span>
+                ) : null}
               </label>
 
               {error ? (

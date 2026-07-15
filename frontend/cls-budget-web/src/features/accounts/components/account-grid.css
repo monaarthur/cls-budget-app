@@ -287,6 +287,60 @@
   color: #0f2744;
 }
 
+.budget-notes-indicator {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+  outline: none;
+}
+
+.budget-notes-indicator-tooltip {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+  max-width: 280px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 39, 68, 0.12);
+  background: #f0f9ff;
+  box-shadow: 0 8px 20px rgba(15, 39, 68, 0.14);
+  color: #0c4a6e;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-50%);
+  transition: opacity 0.12s ease, visibility 0.12s ease;
+}
+
+.budget-notes-indicator-tooltip-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0369a1;
+}
+
+.budget-notes-indicator-tooltip-line {
+  display: block;
+}
+
+.budget-notes-indicator:hover .budget-notes-indicator-tooltip,
+.budget-notes-indicator:focus-visible .budget-notes-indicator-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
 .budget-payment-source-warning {
   position: relative;
   display: inline-flex;

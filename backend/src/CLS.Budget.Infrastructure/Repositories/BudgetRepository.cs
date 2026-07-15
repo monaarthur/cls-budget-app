@@ -104,7 +104,9 @@ public sealed class BudgetRepository(BudgetDbContext dbContext) : IBudgetReposit
                     payment.PaymentDate,
                     newBudget.StartPeriod),
                 ClearedDate = null,
-                PaymentSourceId = payment.PaymentSourceId
+                PaymentSourceId = payment.PaymentSourceId,
+                IncomeSourceId = payment.IncomeSourceId,
+                Notes = payment.Notes
             });
         }
 

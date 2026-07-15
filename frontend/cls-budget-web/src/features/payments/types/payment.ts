@@ -12,6 +12,7 @@ export interface PaymentResponse {
   paymentSourceId: number | null;
   incomeSourceId?: number | null;
   incomeSourceName?: string | null;
+  notes?: string | null;
 }
 
 export interface BudgetPaymentStatusResponse {
@@ -37,6 +38,7 @@ export interface CreatePaymentRequest {
   clearedDate?: string | null;
   paymentSourceId?: number | null;
   incomeSourceId?: number | null;
+  notes?: string | null;
 }
 
 export type UpdatePaymentRequest = CreatePaymentRequest;

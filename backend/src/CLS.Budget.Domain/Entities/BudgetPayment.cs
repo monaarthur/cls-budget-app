@@ -18,4 +18,5 @@ public class BudgetPayment : ITenantOwned
     public PaymentSource? PaymentSource { get; set; }
     public int? IncomeSourceId { get; set; }
     public IncomeSource? IncomeSource { get; set; }
+    public string? Notes { get; set; }
 }

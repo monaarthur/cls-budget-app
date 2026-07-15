@@ -19,7 +19,8 @@ internal static class PaymentMapper
         ClearedDate = ToUtcDate(payment.ClearedDate),
         PaymentSourceId = payment.PaymentSourceId,
         IncomeSourceId = payment.IncomeSourceId,
-        IncomeSourceName = payment.IncomeSource?.Name
+        IncomeSourceName = payment.IncomeSource?.Name,
+        Notes = payment.Notes
     };
 
     public static BudgetPayment ToEntity(CreatePaymentRequest request) => new()
@@ -33,7 +34,8 @@ internal static class PaymentMapper
         PaymentDate = ToUtcDate(request.PaymentDate),
         ClearedDate = ToUtcDate(request.ClearedDate),
         PaymentSourceId = request.PaymentSourceId,
-        IncomeSourceId = request.IncomeSourceId
+        IncomeSourceId = request.IncomeSourceId,
+        Notes = request.Notes
     };
 
     public static void ApplyUpdate(BudgetPayment payment, UpdatePaymentRequest request)
@@ -48,6 +50,7 @@ internal static class PaymentMapper
         payment.ClearedDate = ToUtcDate(request.ClearedDate);
         payment.PaymentSourceId = request.PaymentSourceId;
         payment.IncomeSourceId = request.IncomeSourceId;
+        payment.Notes = request.Notes;
     }
 
     private static DateTime ToUtcDate(DateTime value) =>
