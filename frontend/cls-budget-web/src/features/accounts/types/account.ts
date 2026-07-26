@@ -19,6 +19,16 @@ export interface AccountResponse {
   accountCategoryId: number;
   /** Purchase APR percent (e.g. 22.99). */
   interestRate: number | null;
+  promotionalAnnualPercentageRate?: number | null;
+  promotionalRateExpirationDate?: string | null;
+  minimumPaymentPercentage?: number | null;
+  minimumPaymentFloor?: number | null;
+  /** Optional cash advance APR percent (e.g. 28.99). */
+  cashOutInterestRate?: number | null;
+  /** Optional cash advance fee percent (e.g. 5 = 5%). */
+  cashAdvanceFeePercentage?: number | null;
+  /** When false, omitted from multi-card payoff analysis. Defaults to true. */
+  includeInPayoffAnalysis?: boolean;
 }
 
 export interface CreateAccountRequest {
@@ -41,6 +51,16 @@ export interface CreateAccountRequest {
   isCreditCard?: boolean | null;
   accountCategoryId: number;
   interestRate?: number | null;
+  promotionalAnnualPercentageRate?: number | null;
+  promotionalRateExpirationDate?: string | null;
+  minimumPaymentPercentage?: number | null;
+  minimumPaymentFloor?: number | null;
+  /** Optional cash advance APR percent (e.g. 28.99). */
+  cashOutInterestRate?: number | null;
+  /** Optional cash advance fee percent (e.g. 5 = 5%). */
+  cashAdvanceFeePercentage?: number | null;
+  /** When false, omitted from multi-card payoff analysis. Defaults to true. */
+  includeInPayoffAnalysis?: boolean;
 }
 
 export type UpdateAccountRequest = CreateAccountRequest;

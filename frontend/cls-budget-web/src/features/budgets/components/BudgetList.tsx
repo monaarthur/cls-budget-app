@@ -6,14 +6,10 @@ import { useBudgets } from "@/features/budgets/hooks/useBudgets";
 import { BudgetRow } from "@/features/budgets/components/BudgetRow";
 import { Card } from "@/components/ui/Card";
 import { SectionTitle } from "@/components/ui/SectionTitle";
-import {
-  RECENT_BUDGETS_LIMIT,
-  sortBudgetsByRecent,
-} from "@/features/budgets/utils/budgetFormat";
+import { groupBudgetsByYear } from "@/features/budgets/utils/budgetFormat";
 
 export function BudgetList() {
   const { budgets, loading, error, reload } = useBudgets();
-  const [showAll, setShowAll] = useState(false);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
 
   function handleCopied(name: string) {
@@ -21,15 +17,8 @@ export function BudgetList() {
     void reload();
   }
 
-  const sortedBudgets = useMemo(
-    () => sortBudgetsByRecent(budgets),
-    [budgets],
-  );
-
-  const hasMore = sortedBudgets.length > RECENT_BUDGETS_LIMIT;
-  const visibleBudgets = showAll
-    ? sortedBudgets
-    : sortedBudgets.slice(0, RECENT_BUDGETS_LIMIT);
+  const budgetsByYear = useMemo(() => groupBudgetsByYear(budgets), [budgets]);
+  const totalCount = budgets.length;
 
   if (loading) {
     return (
@@ -59,7 +48,7 @@ export function BudgetList() {
     );
   }
 
-  if (sortedBudgets.length === 0) {
+  if (totalCount === 0) {
     return (
       <Card className="p-8 text-center">
         <p className="text-[var(--muted)]">No budgets yet.</p>
@@ -72,22 +61,7 @@ export function BudgetList() {
 
   return (
     <section>
-      <SectionTitle
-        title="Budgets"
-        action={
-          hasMore ? (
-            <button
-              type="button"
-              onClick={() => setShowAll((value) => !value)}
-              className="text-xs font-medium text-[var(--link)]"
-            >
-              {showAll
-                ? "Show recent"
-                : `See all (${sortedBudgets.length})`}
-            </button>
-          ) : null
-        }
-      />
+      <SectionTitle title="Budget List" />
 
       {copySuccess ? (
         <div className="mb-3 flex items-center gap-2 rounded-2xl border border-[var(--positive)]/20 bg-[var(--positive)]/10 px-4 py-2.5 text-sm text-[var(--positive)]">
@@ -103,27 +77,34 @@ export function BudgetList() {
         </div>
       ) : null}
 
-      <Card className="overflow-hidden">
-        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 border-b border-[var(--border)] bg-[#f8fafc] px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-          <span>Name</span>
-          <span>Month</span>
-          <span>Year</span>
-          <span className="sr-only">Actions</span>
-        </div>
-        <ul className="divide-y divide-[var(--border)]">
-          {visibleBudgets.map((budget) => (
-            <li key={budget.budgetId}>
-              <BudgetRow budget={budget} onCopied={handleCopied} />
-            </li>
-          ))}
-        </ul>
-      </Card>
-
-      {!showAll && hasMore ? (
-        <p className="mt-2 text-center text-xs text-[var(--muted)]">
-          Showing {RECENT_BUDGETS_LIMIT} most recent of {sortedBudgets.length}
-        </p>
-      ) : null}
+      <div className="space-y-4">
+        {budgetsByYear.map(({ year, budgets: yearBudgets }) => (
+          <Card key={year} className="overflow-hidden">
+            <div className="flex items-center justify-between border-b border-[var(--border)] bg-[#f8fafc] px-4 py-2.5">
+              <h3 className="text-sm font-semibold text-[var(--foreground)]">
+                {year}
+              </h3>
+              <span className="text-xs text-[var(--muted)]">
+                {yearBudgets.length}{" "}
+                {yearBudgets.length === 1 ? "budget" : "budgets"}
+              </span>
+            </div>
+            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 border-b border-[var(--border)] bg-[#f8fafc]/80 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+              <span>Name</span>
+              <span>Month</span>
+              <span>Year</span>
+              <span className="sr-only">Actions</span>
+            </div>
+            <ul className="divide-y divide-[var(--border)]">
+              {yearBudgets.map((budget) => (
+                <li key={budget.budgetId}>
+                  <BudgetRow budget={budget} onCopied={handleCopied} />
+                </li>
+              ))}
+            </ul>
+          </Card>
+        ))}
+      </div>
     </section>
   );
 }

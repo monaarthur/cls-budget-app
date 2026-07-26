@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GridApi } from "ag-grid-community";
 import { Columns3 } from "lucide-react";
 import {
@@ -21,6 +21,16 @@ function gridColumnsForPicker(creditCardOnly: boolean) {
   );
 }
 
+function visibilityUnchanged(
+  prev: Record<string, boolean>,
+  next: Record<string, boolean>,
+): boolean {
+  const prevKeys = Object.keys(prev);
+  const nextKeys = Object.keys(next);
+  if (prevKeys.length !== nextKeys.length) return false;
+  return nextKeys.every((key) => prev[key] === next[key]);
+}
+
 export function ColumnPicker({
   gridApi,
   columnStateNamespace = "accounts-grid",
@@ -30,7 +40,10 @@ export function ColumnPicker({
   columnStateNamespace?: string;
   creditCardOnly?: boolean;
 }) {
-  const pickerColumns = gridColumnsForPicker(creditCardOnly);
+  const pickerColumns = useMemo(
+    () => gridColumnsForPicker(creditCardOnly),
+    [creditCardOnly],
+  );
   const [open, setOpen] = useState(false);
   const [visible, setVisible] = useState<Record<string, boolean>>({});
   const panelRef = useRef<HTMLDivElement>(null);
@@ -42,7 +55,7 @@ export function ColumnPicker({
       const column = gridApi.getColumn(colId);
       next[colId] = column?.isVisible() ?? true;
     }
-    setVisible(next);
+    setVisible((prev) => (visibilityUnchanged(prev, next) ? prev : next));
   }, [gridApi, pickerColumns]);
 
   useEffect(() => {

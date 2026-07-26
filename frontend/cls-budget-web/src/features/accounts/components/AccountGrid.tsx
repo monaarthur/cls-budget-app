@@ -236,6 +236,50 @@ export function AccountGrid({ creditCardOnly = false }: AccountGridProps) {
           parseOptionalNumber(p.newValue),
       },
       {
+        field: "cashOutInterestRate",
+        headerName: "Cash advance APR %",
+        headerTooltip:
+          "Optional. Only cards with a cash-advance APR or fee % set can receive cash-advance balance moves in payoff plans.",
+        editable: editableUnlessPinned(),
+        width: 150,
+        minWidth: 130,
+        maxWidth: 180,
+        filter: "agNumberColumnFilter",
+        cellClass: "ag-cell-center",
+        cellEditor: "agNumberCellEditor",
+        cellEditorParams: {
+          min: 0,
+          max: 100,
+          precision: 2,
+          showStepperButtons: false,
+        },
+        valueFormatter: (p) => formatApr(p.value),
+        valueParser: (p: ValueParserParams) =>
+          parseOptionalNumber(p.newValue),
+      },
+      {
+        field: "cashAdvanceFeePercentage",
+        headerName: "Cash advance fee %",
+        headerTooltip:
+          "Optional fee on cash advances. If cash-advance APR is blank, this percentage is also used as the cash-advance rate for payoff transfers. Leave both blank if the card cannot receive cash-advance moves.",
+        editable: editableUnlessPinned(),
+        width: 150,
+        minWidth: 130,
+        maxWidth: 180,
+        filter: "agNumberColumnFilter",
+        cellClass: "ag-cell-center",
+        cellEditor: "agNumberCellEditor",
+        cellEditorParams: {
+          min: 0,
+          max: 100,
+          precision: 2,
+          showStepperButtons: false,
+        },
+        valueFormatter: (p) => formatApr(p.value),
+        valueParser: (p: ValueParserParams) =>
+          parseOptionalNumber(p.newValue),
+      },
+      {
         field: "monthlyPayment",
         headerName: "Monthly",
         editable: editableUnlessPinned(),
@@ -291,6 +335,26 @@ export function AccountGrid({ creditCardOnly = false }: AccountGridProps) {
             a.name,
             b.name,
           );
+        },
+      },
+      {
+        colId: "excludeFromPayoff",
+        headerName: "Exclude payoff",
+        headerTooltip:
+          "Exclude this card from avalanche/snowball payoff analysis (e.g. creditor payment plan).",
+        editable: editableUnlessPinned(),
+        cellEditor: "agCheckboxCellEditor",
+        filter: true,
+        width: 130,
+        cellClass: "ag-cell-center",
+        valueGetter: (params: ValueGetterParams<AccountGridRow>) =>
+          params.data
+            ? !(params.data.includeInPayoffAnalysis ?? true)
+            : false,
+        valueSetter: (params: ValueSetterParams<AccountGridRow>) => {
+          if (!params.data) return false;
+          params.data.includeInPayoffAnalysis = !Boolean(params.newValue);
+          return true;
         },
       },
       {

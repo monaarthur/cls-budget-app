@@ -288,57 +288,70 @@
 }
 
 .budget-notes-indicator {
-  position: relative;
   display: inline-flex;
   align-items: center;
-  cursor: help;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  border-radius: 4px;
+  cursor: pointer;
   outline: none;
 }
 
-.budget-notes-indicator-tooltip {
-  position: absolute;
-  left: calc(100% + 8px);
-  top: 50%;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 160px;
-  max-width: 280px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(15, 39, 68, 0.12);
-  background: #f0f9ff;
-  box-shadow: 0 8px 20px rgba(15, 39, 68, 0.14);
-  color: #0c4a6e;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.35;
-  white-space: pre-wrap;
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-50%);
-  transition: opacity 0.12s ease, visibility 0.12s ease;
+.budget-notes-indicator:hover,
+.budget-notes-indicator:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
 }
 
-.budget-notes-indicator-tooltip-label {
-  display: block;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+.budget-notes-indicator--active {
+  background: rgba(56, 189, 248, 0.16);
+}
+
+.budget-notes-preview-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0 2px;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+.budget-notes-preview-cell:hover,
+.budget-notes-preview-cell:focus-visible {
+  background: rgba(15, 39, 68, 0.04);
+  outline: none;
+}
+
+.budget-notes-preview-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: inherit;
+}
+
+.budget-notes-preview-cell:not(:hover) .budget-notes-preview-text:empty,
+.budget-notes-preview-text:is(:only-child) {
+  color: inherit;
+}
+
+.budget-notes-preview-icon {
+  flex-shrink: 0;
+  opacity: 0.55;
   color: #0369a1;
 }
 
-.budget-notes-indicator-tooltip-line {
-  display: block;
-}
-
-.budget-notes-indicator:hover .budget-notes-indicator-tooltip,
-.budget-notes-indicator:focus-visible .budget-notes-indicator-tooltip {
+.budget-notes-preview-cell:hover .budget-notes-preview-icon,
+.budget-notes-preview-cell:focus-visible .budget-notes-preview-icon {
   opacity: 1;
-  visibility: visible;
 }
 
 .budget-payment-source-warning {

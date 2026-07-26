@@ -14,7 +14,7 @@ export const BUDGET_GRID_COLUMNS = [
   { colId: "accountMonthlyPayment", label: "Monthly (account)" },
   { colId: "paymentSourceId", label: "Payment source" },
   { colId: "incomeSourceId", label: "Income source" },
-  { colId: "notes", label: "Line notes" },
+  { colId: "notes", label: "Line to-dos" },
   { colId: "accountNotes", label: "Account notes" },
 ] as const;
 

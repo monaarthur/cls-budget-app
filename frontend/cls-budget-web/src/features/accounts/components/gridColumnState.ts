@@ -9,7 +9,7 @@ import {
 const ACCOUNTS_GRID_NAMESPACE = "accounts-grid";
 const CREDIT_CARD_GRID_NAMESPACE = "credit-cards-grid";
 const ACCOUNTS_STORAGE_VERSION = 2;
-const CREDIT_CARD_STORAGE_VERSION = 5;
+const CREDIT_CARD_STORAGE_VERSION = 8;
 
 function storageKeys(namespace: string) {
   return {

@@ -176,6 +176,114 @@ namespace CLS.Budget.EfCore.Migrations
                         });
                 });
 
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.ActivePayoffPlan", b =>
+                {
+                    b.Property<int>("ActivePayoffPlanId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ActivePayoffPlanId"));
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CurrentVersionNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("EnableCashAdvanceBalanceMoves")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("EndedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("ExtraMonthlyPayment")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Goal")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<decimal?>("LoanAmount")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("LoanAnnualPercentageRate")
+                        .HasColumnType("numeric(8,4)");
+
+                    b.Property<string>("LoanApplyCreditCardIdsJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("LoanApplyStrategy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<decimal?>("LoanFixedMonthlyPayment")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int?>("LoanInterestOnlyMonths")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("LoanTermMonths")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LoanType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("PayOverLimitFirst")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("PostUtilizationStrategy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("PromotionalTransfersJson")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("SourceSavedPayoffPlanId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("StartedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("StartingDebt")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Strategy")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<decimal?>("TargetUtilizationPercent")
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("TotalMonthlyDebtPayment")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("ActivePayoffPlanId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "Status");
+
+                    b.ToTable("ActivePayoffPlan", (string)null);
+                });
+
             modelBuilder.Entity("CLS.Budget.Domain.Entities.AppUser", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -333,8 +441,8 @@ namespace CLS.Budget.EfCore.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<string>("Notes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
 
                     b.Property<DateTime>("PaymentDate")
                         .HasColumnType("timestamp with time zone");
@@ -478,14 +586,34 @@ namespace CLS.Budget.EfCore.Migrations
                     b.Property<int>("AccountId")
                         .HasColumnType("integer");
 
+                    b.Property<decimal?>("CashAdvanceFeePercentage")
+                        .HasColumnType("numeric(8,4)");
+
                     b.Property<decimal?>("CashOutInterestRate")
                         .HasColumnType("numeric(8,4)");
+
+                    b.Property<bool>("IncludeInPayoffAnalysis")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
 
                     b.Property<decimal?>("InterestRate")
                         .HasColumnType("numeric(8,4)");
 
                     b.Property<decimal?>("Limit")
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("MinimumPaymentFloor")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("MinimumPaymentPercentage")
+                        .HasColumnType("numeric(8,4)");
+
+                    b.Property<decimal?>("PromotionalAnnualPercentageRate")
+                        .HasColumnType("numeric(8,4)");
+
+                    b.Property<DateTime?>("PromotionalRateExpirationDate")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
@@ -498,6 +626,166 @@ namespace CLS.Budget.EfCore.Migrations
                     b.HasIndex("TenantId");
 
                     b.ToTable("CreditCardDetail", (string)null);
+                });
+
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.ForecastMonthlySnapshot", b =>
+                {
+                    b.Property<int>("ForecastMonthlySnapshotId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ForecastMonthlySnapshotId"));
+
+                    b.Property<decimal>("AvailableCash")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("CardsPaidOffThisMonth")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("CumulativeInterest")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("EndingDebt")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("ForecastScenarioId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Interest")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateOnly>("Month")
+                        .HasColumnType("date");
+
+                    b.Property<int>("MonthIndex")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("NewCharges")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("OverallUtilizationPercentage")
+                        .HasColumnType("numeric(8,4)");
+
+                    b.Property<decimal>("Payments")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("StartingDebt")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("TotalCreditLimit")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("ForecastMonthlySnapshotId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("ForecastScenarioId", "MonthIndex");
+
+                    b.ToTable("ForecastMonthlySnapshot", (string)null);
+                });
+
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.ForecastScenario", b =>
+                {
+                    b.Property<int>("ForecastScenarioId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ForecastScenarioId"));
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("EstimatedDebtFreeDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("ForecastMonths")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("MonthlyExpenses")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("MonthlyNetIncome")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("PayOverLimitFirst")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("StartingDebt")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Strategy")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<decimal?>("TargetUtilizationPercent")
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("TotalInterestPaid")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TotalMonthlyDebtPayment")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("ForecastScenarioId");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("ForecastScenario", (string)null);
+                });
+
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.ForecastScenarioCreditCard", b =>
+                {
+                    b.Property<int>("ForecastScenarioCreditCardId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ForecastScenarioCreditCardId"));
+
+                    b.Property<decimal>("AnnualPercentageRate")
+                        .HasColumnType("numeric(8,4)");
+
+                    b.Property<int>("CreditCardId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("CreditLimit")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("ForecastScenarioId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("StartingBalance")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("ForecastScenarioCreditCardId");
+
+                    b.HasIndex("ForecastScenarioId");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("ForecastScenarioCreditCard", (string)null);
                 });
 
             modelBuilder.Entity("CLS.Budget.Domain.Entities.ImportedTransaction", b =>
@@ -786,6 +1074,203 @@ namespace CLS.Budget.EfCore.Migrations
                         });
                 });
 
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.PayoffPlanEvent", b =>
+                {
+                    b.Property<int>("PayoffPlanEventId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PayoffPlanEventId"));
+
+                    b.Property<int>("ActivePayoffPlanId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("PayloadJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("PayoffPlanEventId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("ActivePayoffPlanId", "CreatedOnUtc");
+
+                    b.ToTable("PayoffPlanEvent", (string)null);
+                });
+
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.PayoffPlanPayment", b =>
+                {
+                    b.Property<int>("PayoffPlanPaymentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PayoffPlanPaymentId"));
+
+                    b.Property<int>("AccountId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ActivePayoffPlanId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsVoided")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateOnly>("PaymentDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("PayoffPlanVersionId")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("VoidedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PayoffPlanPaymentId");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("PayoffPlanVersionId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("ActivePayoffPlanId", "PaymentDate");
+
+                    b.ToTable("PayoffPlanPayment", (string)null);
+                });
+
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.PayoffPlanVersion", b =>
+                {
+                    b.Property<int>("PayoffPlanVersionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PayoffPlanVersionId"));
+
+                    b.Property<int>("ActivePayoffPlanId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("EnableCashAdvanceBalanceMoves")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("ExtraMonthlyPayment")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Goal")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<decimal?>("LoanAmount")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("LoanAnnualPercentageRate")
+                        .HasColumnType("numeric(8,4)");
+
+                    b.Property<string>("LoanApplyCreditCardIdsJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("LoanApplyStrategy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<decimal?>("LoanFixedMonthlyPayment")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int?>("LoanInterestOnlyMonths")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("LoanTermMonths")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LoanType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<bool>("PayOverLimitFirst")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("PostUtilizationStrategy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("ProjectedMonthsToPayoff")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly?>("ProjectedPayoffDate")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("ProjectedTotalInterest")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<bool>("ProjectionIsValid")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("PromotionalTransfersJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<decimal>("SnapshotDebt")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Strategy")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<decimal?>("TargetUtilizationPercent")
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("TotalMonthlyDebtPayment")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("integer");
+
+                    b.HasKey("PayoffPlanVersionId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("ActivePayoffPlanId", "VersionNumber")
+                        .IsUnique();
+
+                    b.ToTable("PayoffPlanVersion", (string)null);
+                });
+
             modelBuilder.Entity("CLS.Budget.Domain.Entities.RefreshToken", b =>
                 {
                     b.Property<Guid>("RefreshTokenId")
@@ -816,6 +1301,94 @@ namespace CLS.Budget.EfCore.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("RefreshToken", (string)null);
+                });
+
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.SavedPayoffPlan", b =>
+                {
+                    b.Property<int>("SavedPayoffPlanId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("SavedPayoffPlanId"));
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("EnableCashAdvanceBalanceMoves")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("ExtraMonthlyPayment")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Goal")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<decimal?>("LoanAmount")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("LoanAnnualPercentageRate")
+                        .HasColumnType("numeric(8,4)");
+
+                    b.Property<string>("LoanApplyCreditCardIdsJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("LoanApplyStrategy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<decimal?>("LoanFixedMonthlyPayment")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int?>("LoanInterestOnlyMonths")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("LoanTermMonths")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LoanType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("PayOverLimitFirst")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("PostUtilizationStrategy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("PromotionalTransfersJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Strategy")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<decimal?>("TargetUtilizationPercent")
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("TotalMonthlyDebtPayment")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("SavedPayoffPlanId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "CreatedOnUtc");
+
+                    b.ToTable("SavedPayoffPlan", (string)null);
                 });
 
             modelBuilder.Entity("CLS.Budget.Domain.Entities.Tenant", b =>
@@ -979,6 +1552,28 @@ namespace CLS.Budget.EfCore.Migrations
                     b.Navigation("Account");
                 });
 
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.ForecastMonthlySnapshot", b =>
+                {
+                    b.HasOne("CLS.Budget.Domain.Entities.ForecastScenario", "ForecastScenario")
+                        .WithMany("MonthlySnapshots")
+                        .HasForeignKey("ForecastScenarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ForecastScenario");
+                });
+
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.ForecastScenarioCreditCard", b =>
+                {
+                    b.HasOne("CLS.Budget.Domain.Entities.ForecastScenario", "ForecastScenario")
+                        .WithMany("CreditCards")
+                        .HasForeignKey("ForecastScenarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ForecastScenario");
+                });
+
             modelBuilder.Entity("CLS.Budget.Domain.Entities.ImportedTransaction", b =>
                 {
                     b.HasOne("CLS.Budget.Domain.Entities.AccountCategory", "AccountCategory")
@@ -1042,6 +1637,55 @@ namespace CLS.Budget.EfCore.Migrations
                     b.Navigation("PayFrequencyType");
                 });
 
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.PayoffPlanEvent", b =>
+                {
+                    b.HasOne("CLS.Budget.Domain.Entities.ActivePayoffPlan", "ActivePayoffPlan")
+                        .WithMany("Events")
+                        .HasForeignKey("ActivePayoffPlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ActivePayoffPlan");
+                });
+
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.PayoffPlanPayment", b =>
+                {
+                    b.HasOne("CLS.Budget.Domain.Entities.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CLS.Budget.Domain.Entities.ActivePayoffPlan", "ActivePayoffPlan")
+                        .WithMany("Payments")
+                        .HasForeignKey("ActivePayoffPlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CLS.Budget.Domain.Entities.PayoffPlanVersion", "PayoffPlanVersion")
+                        .WithMany("Payments")
+                        .HasForeignKey("PayoffPlanVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+
+                    b.Navigation("ActivePayoffPlan");
+
+                    b.Navigation("PayoffPlanVersion");
+                });
+
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.PayoffPlanVersion", b =>
+                {
+                    b.HasOne("CLS.Budget.Domain.Entities.ActivePayoffPlan", "ActivePayoffPlan")
+                        .WithMany("Versions")
+                        .HasForeignKey("ActivePayoffPlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ActivePayoffPlan");
+                });
+
             modelBuilder.Entity("CLS.Budget.Domain.Entities.RefreshToken", b =>
                 {
                     b.HasOne("CLS.Budget.Domain.Entities.AppUser", "User")
@@ -1068,6 +1712,15 @@ namespace CLS.Budget.EfCore.Migrations
                     b.Navigation("CreditCardDetail");
                 });
 
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.ActivePayoffPlan", b =>
+                {
+                    b.Navigation("Events");
+
+                    b.Navigation("Payments");
+
+                    b.Navigation("Versions");
+                });
+
             modelBuilder.Entity("CLS.Budget.Domain.Entities.AppUser", b =>
                 {
                     b.Navigation("RefreshTokens");
@@ -1076,6 +1729,18 @@ namespace CLS.Budget.EfCore.Migrations
             modelBuilder.Entity("CLS.Budget.Domain.Entities.BudgetModel", b =>
                 {
                     b.Navigation("BudgetPayments");
+                });
+
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.ForecastScenario", b =>
+                {
+                    b.Navigation("CreditCards");
+
+                    b.Navigation("MonthlySnapshots");
+                });
+
+            modelBuilder.Entity("CLS.Budget.Domain.Entities.PayoffPlanVersion", b =>
+                {
+                    b.Navigation("Payments");
                 });
 
             modelBuilder.Entity("CLS.Budget.Domain.Entities.Tenant", b =>

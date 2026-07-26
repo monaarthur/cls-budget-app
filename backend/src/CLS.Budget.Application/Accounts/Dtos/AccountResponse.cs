@@ -22,4 +22,15 @@ public sealed class AccountResponse
     public int AccountCategoryId { get; init; }
     /// <summary>Purchase APR percent (e.g. 22.99), from CreditCardDetail.</summary>
     public decimal? InterestRate { get; init; }
+    public decimal? PromotionalAnnualPercentageRate { get; init; }
+    public DateTime? PromotionalRateExpirationDate { get; init; }
+    /// <summary>Minimum payment percent of balance (e.g. 2.00 = 2%).</summary>
+    public decimal? MinimumPaymentPercentage { get; init; }
+    public decimal? MinimumPaymentFloor { get; init; }
+    /// <summary>Optional cash advance APR percent (e.g. 28.99).</summary>
+    public decimal? CashOutInterestRate { get; init; }
+    /// <summary>Optional cash advance fee percent (e.g. 5.00 = 5%).</summary>
+    public decimal? CashAdvanceFeePercentage { get; init; }
+    /// <summary>When false, omitted from multi-card payoff analysis.</summary>
+    public bool IncludeInPayoffAnalysis { get; init; } = true;
 }

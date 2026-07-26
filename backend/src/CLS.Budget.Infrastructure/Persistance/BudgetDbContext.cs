@@ -29,6 +29,14 @@ public class BudgetDbContext(DbContextOptions<BudgetDbContext> options, ITenantC
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<TransactionImport> TransactionImports => Set<TransactionImport>();
     public DbSet<ImportedTransaction> ImportedTransactions => Set<ImportedTransaction>();
+    public DbSet<ForecastScenario> ForecastScenarios => Set<ForecastScenario>();
+    public DbSet<ForecastScenarioCreditCard> ForecastScenarioCreditCards => Set<ForecastScenarioCreditCard>();
+    public DbSet<ForecastMonthlySnapshot> ForecastMonthlySnapshots => Set<ForecastMonthlySnapshot>();
+    public DbSet<SavedPayoffPlan> SavedPayoffPlans => Set<SavedPayoffPlan>();
+    public DbSet<ActivePayoffPlan> ActivePayoffPlans => Set<ActivePayoffPlan>();
+    public DbSet<PayoffPlanVersion> PayoffPlanVersions => Set<PayoffPlanVersion>();
+    public DbSet<PayoffPlanPayment> PayoffPlanPayments => Set<PayoffPlanPayment>();
+    public DbSet<PayoffPlanEvent> PayoffPlanEvents => Set<PayoffPlanEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -73,6 +81,11 @@ public class BudgetDbContext(DbContextOptions<BudgetDbContext> options, ITenantC
             e.Property(x => x.InterestRate).HasColumnType("numeric(8,4)");
             e.Property(x => x.Limit).HasColumnType("numeric(18,2)");
             e.Property(x => x.CashOutInterestRate).HasColumnType("numeric(8,4)");
+            e.Property(x => x.CashAdvanceFeePercentage).HasColumnType("numeric(8,4)");
+            e.Property(x => x.PromotionalAnnualPercentageRate).HasColumnType("numeric(8,4)");
+            e.Property(x => x.MinimumPaymentPercentage).HasColumnType("numeric(8,4)");
+            e.Property(x => x.MinimumPaymentFloor).HasColumnType("numeric(18,2)");
+            e.Property(x => x.IncludeInPayoffAnalysis).HasDefaultValue(true);
             e.HasIndex(x => x.AccountId).IsUnique();
             e.HasIndex(x => x.TenantId);
             e.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
@@ -161,7 +174,7 @@ public class BudgetDbContext(DbContextOptions<BudgetDbContext> options, ITenantC
             e.HasKey(x => x.BudgetPaymentId);
             e.Property(x => x.PaymentMade).HasColumnType("numeric(18,2)");
             e.Property(x => x.Amount).HasColumnType("numeric(18,2)");
-            e.Property(x => x.Notes).HasMaxLength(1000);
+            e.Property(x => x.Notes).HasMaxLength(4000);
             e.HasOne(x => x.BudgetPaymentStatus)
                 .WithMany()
                 .HasForeignKey(x => x.BudgetPaymentStatusId)
@@ -299,6 +312,172 @@ public class BudgetDbContext(DbContextOptions<BudgetDbContext> options, ITenantC
                 .OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(x => x.TenantId);
             e.HasIndex(x => new { x.TransactionImportId, x.LineNumber });
+            e.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<ForecastScenario>(e =>
+        {
+            e.ToTable("ForecastScenario");
+            e.HasKey(x => x.ForecastScenarioId);
+            e.Property(x => x.Name).IsRequired().HasMaxLength(200);
+            e.Property(x => x.Strategy).IsRequired().HasMaxLength(50);
+            e.Property(x => x.TotalMonthlyDebtPayment).HasColumnType("numeric(18,2)");
+            e.Property(x => x.StartingDebt).HasColumnType("numeric(18,2)");
+            e.Property(x => x.MonthlyNetIncome).HasColumnType("numeric(18,2)");
+            e.Property(x => x.MonthlyExpenses).HasColumnType("numeric(18,2)");
+            e.Property(x => x.TargetUtilizationPercent).HasColumnType("numeric(5,2)");
+            e.Property(x => x.TotalInterestPaid).HasColumnType("numeric(18,2)");
+            e.HasIndex(x => x.TenantId);
+            e.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<ForecastScenarioCreditCard>(e =>
+        {
+            e.ToTable("ForecastScenarioCreditCard");
+            e.HasKey(x => x.ForecastScenarioCreditCardId);
+            e.Property(x => x.Name).IsRequired().HasMaxLength(200);
+            e.Property(x => x.StartingBalance).HasColumnType("numeric(18,2)");
+            e.Property(x => x.CreditLimit).HasColumnType("numeric(18,2)");
+            e.Property(x => x.AnnualPercentageRate).HasColumnType("numeric(8,4)");
+            e.HasOne(x => x.ForecastScenario)
+                .WithMany(x => x.CreditCards)
+                .HasForeignKey(x => x.ForecastScenarioId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.TenantId);
+            e.HasIndex(x => x.ForecastScenarioId);
+            e.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<ForecastMonthlySnapshot>(e =>
+        {
+            e.ToTable("ForecastMonthlySnapshot");
+            e.HasKey(x => x.ForecastMonthlySnapshotId);
+            e.Property(x => x.StartingDebt).HasColumnType("numeric(18,2)");
+            e.Property(x => x.NewCharges).HasColumnType("numeric(18,2)");
+            e.Property(x => x.Interest).HasColumnType("numeric(18,2)");
+            e.Property(x => x.Payments).HasColumnType("numeric(18,2)");
+            e.Property(x => x.EndingDebt).HasColumnType("numeric(18,2)");
+            e.Property(x => x.TotalCreditLimit).HasColumnType("numeric(18,2)");
+            e.Property(x => x.OverallUtilizationPercentage).HasColumnType("numeric(8,4)");
+            e.Property(x => x.AvailableCash).HasColumnType("numeric(18,2)");
+            e.Property(x => x.CumulativeInterest).HasColumnType("numeric(18,2)");
+            e.HasOne(x => x.ForecastScenario)
+                .WithMany(x => x.MonthlySnapshots)
+                .HasForeignKey(x => x.ForecastScenarioId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.TenantId);
+            e.HasIndex(x => new { x.ForecastScenarioId, x.MonthIndex });
+            e.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<SavedPayoffPlan>(e =>
+        {
+            e.ToTable("SavedPayoffPlan");
+            e.HasKey(x => x.SavedPayoffPlanId);
+            e.Property(x => x.Name).IsRequired().HasMaxLength(200);
+            e.Property(x => x.Goal).HasMaxLength(50);
+            e.Property(x => x.Strategy).IsRequired().HasMaxLength(50);
+            e.Property(x => x.ExtraMonthlyPayment).HasColumnType("numeric(18,2)");
+            e.Property(x => x.TotalMonthlyDebtPayment).HasColumnType("numeric(18,2)");
+            e.Property(x => x.TargetUtilizationPercent).HasColumnType("numeric(5,2)");
+            e.Property(x => x.PostUtilizationStrategy).HasMaxLength(50);
+            e.Property(x => x.LoanAmount).HasColumnType("numeric(18,2)");
+            e.Property(x => x.LoanAnnualPercentageRate).HasColumnType("numeric(8,4)");
+            e.Property(x => x.LoanApplyStrategy).HasMaxLength(50);
+            e.Property(x => x.LoanApplyCreditCardIdsJson);
+            e.Property(x => x.LoanType).HasMaxLength(50);
+            e.Property(x => x.LoanFixedMonthlyPayment).HasColumnType("numeric(18,2)");
+            e.Property(x => x.PromotionalTransfersJson);
+            e.HasIndex(x => x.TenantId);
+            e.HasIndex(x => new { x.TenantId, x.CreatedOnUtc });
+            e.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<ActivePayoffPlan>(e =>
+        {
+            e.ToTable("ActivePayoffPlan");
+            e.HasKey(x => x.ActivePayoffPlanId);
+            e.Property(x => x.Name).IsRequired().HasMaxLength(200);
+            e.Property(x => x.Status).IsRequired().HasMaxLength(30);
+            e.Property(x => x.Goal).HasMaxLength(50);
+            e.Property(x => x.Strategy).IsRequired().HasMaxLength(50);
+            e.Property(x => x.ExtraMonthlyPayment).HasColumnType("numeric(18,2)");
+            e.Property(x => x.TotalMonthlyDebtPayment).HasColumnType("numeric(18,2)");
+            e.Property(x => x.TargetUtilizationPercent).HasColumnType("numeric(5,2)");
+            e.Property(x => x.PostUtilizationStrategy).HasMaxLength(50);
+            e.Property(x => x.StartingDebt).HasColumnType("numeric(18,2)");
+            e.Property(x => x.LoanAmount).HasColumnType("numeric(18,2)");
+            e.Property(x => x.LoanAnnualPercentageRate).HasColumnType("numeric(8,4)");
+            e.Property(x => x.LoanApplyStrategy).HasMaxLength(50);
+            e.Property(x => x.LoanType).HasMaxLength(50);
+            e.Property(x => x.LoanFixedMonthlyPayment).HasColumnType("numeric(18,2)");
+            e.HasIndex(x => x.TenantId);
+            e.HasIndex(x => new { x.TenantId, x.Status });
+            e.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<PayoffPlanVersion>(e =>
+        {
+            e.ToTable("PayoffPlanVersion");
+            e.HasKey(x => x.PayoffPlanVersionId);
+            e.Property(x => x.Reason).HasMaxLength(500);
+            e.Property(x => x.Goal).HasMaxLength(50);
+            e.Property(x => x.Strategy).IsRequired().HasMaxLength(50);
+            e.Property(x => x.ExtraMonthlyPayment).HasColumnType("numeric(18,2)");
+            e.Property(x => x.TotalMonthlyDebtPayment).HasColumnType("numeric(18,2)");
+            e.Property(x => x.TargetUtilizationPercent).HasColumnType("numeric(5,2)");
+            e.Property(x => x.PostUtilizationStrategy).HasMaxLength(50);
+            e.Property(x => x.LoanAmount).HasColumnType("numeric(18,2)");
+            e.Property(x => x.LoanAnnualPercentageRate).HasColumnType("numeric(8,4)");
+            e.Property(x => x.LoanApplyStrategy).HasMaxLength(50);
+            e.Property(x => x.LoanType).HasMaxLength(50);
+            e.Property(x => x.LoanFixedMonthlyPayment).HasColumnType("numeric(18,2)");
+            e.Property(x => x.SnapshotDebt).HasColumnType("numeric(18,2)");
+            e.Property(x => x.ProjectedTotalInterest).HasColumnType("numeric(18,2)");
+            e.HasOne(x => x.ActivePayoffPlan)
+                .WithMany(x => x.Versions)
+                .HasForeignKey(x => x.ActivePayoffPlanId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.TenantId);
+            e.HasIndex(x => new { x.ActivePayoffPlanId, x.VersionNumber }).IsUnique();
+            e.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<PayoffPlanPayment>(e =>
+        {
+            e.ToTable("PayoffPlanPayment");
+            e.HasKey(x => x.PayoffPlanPaymentId);
+            e.Property(x => x.Amount).HasColumnType("numeric(18,2)");
+            e.Property(x => x.Notes).HasMaxLength(1000);
+            e.HasOne(x => x.ActivePayoffPlan)
+                .WithMany(x => x.Payments)
+                .HasForeignKey(x => x.ActivePayoffPlanId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.PayoffPlanVersion)
+                .WithMany(x => x.Payments)
+                .HasForeignKey(x => x.PayoffPlanVersionId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Account)
+                .WithMany()
+                .HasForeignKey(x => x.AccountId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.TenantId);
+            e.HasIndex(x => new { x.ActivePayoffPlanId, x.PaymentDate });
+            e.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<PayoffPlanEvent>(e =>
+        {
+            e.ToTable("PayoffPlanEvent");
+            e.HasKey(x => x.PayoffPlanEventId);
+            e.Property(x => x.EventType).IsRequired().HasMaxLength(50);
+            e.Property(x => x.Summary).IsRequired().HasMaxLength(500);
+            e.HasOne(x => x.ActivePayoffPlan)
+                .WithMany(x => x.Events)
+                .HasForeignKey(x => x.ActivePayoffPlanId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.TenantId);
+            e.HasIndex(x => new { x.ActivePayoffPlanId, x.CreatedOnUtc });
             e.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
         });
 

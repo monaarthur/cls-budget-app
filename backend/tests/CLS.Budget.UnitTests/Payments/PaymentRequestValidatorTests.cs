@@ -10,7 +10,7 @@ public sealed class PaymentRequestValidatorTests
     private readonly UpdatePaymentRequestValidator _update = new();
 
     [Fact]
-    public void Create_AllowsNotesUpTo1000Characters()
+    public void Create_AllowsNotesUpTo4000Characters()
     {
         var request = new CreatePaymentRequest
         {
@@ -20,14 +20,14 @@ public sealed class PaymentRequestValidatorTests
             Amount = 100,
             BudgetPaymentStatusId = 2,
             PaymentDate = DateTime.UtcNow.Date,
-            Notes = new string('n', 1000)
+            Notes = new string('n', 4000)
         };
 
         _create.Validate(request).IsValid.Should().BeTrue();
     }
 
     [Fact]
-    public void Create_RejectsNotesOver1000Characters()
+    public void Create_RejectsNotesOver4000Characters()
     {
         var request = new CreatePaymentRequest
         {
@@ -37,7 +37,7 @@ public sealed class PaymentRequestValidatorTests
             Amount = 100,
             BudgetPaymentStatusId = 2,
             PaymentDate = DateTime.UtcNow.Date,
-            Notes = new string('n', 1001)
+            Notes = new string('n', 4001)
         };
 
         var result = _create.Validate(request);
@@ -47,7 +47,7 @@ public sealed class PaymentRequestValidatorTests
     }
 
     [Fact]
-    public void Update_RejectsNotesOver1000Characters()
+    public void Update_RejectsNotesOver4000Characters()
     {
         var request = new UpdatePaymentRequest
         {
@@ -57,7 +57,7 @@ public sealed class PaymentRequestValidatorTests
             Amount = 100,
             BudgetPaymentStatusId = 2,
             PaymentDate = DateTime.UtcNow.Date,
-            Notes = new string('n', 1001)
+            Notes = new string('n', 4001)
         };
 
         var result = _update.Validate(request);

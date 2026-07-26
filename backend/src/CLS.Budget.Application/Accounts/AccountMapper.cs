@@ -25,7 +25,14 @@ internal static class AccountMapper
         PaidOffDate = account.PaidOffDate,
         IsCreditCard = account.IsCreditCard,
         AccountCategoryId = account.AccountCategoryId,
-        InterestRate = account.CreditCardDetail?.InterestRate
+        InterestRate = account.CreditCardDetail?.InterestRate,
+        PromotionalAnnualPercentageRate = account.CreditCardDetail?.PromotionalAnnualPercentageRate,
+        PromotionalRateExpirationDate = account.CreditCardDetail?.PromotionalRateExpirationDate,
+        MinimumPaymentPercentage = account.CreditCardDetail?.MinimumPaymentPercentage,
+        MinimumPaymentFloor = account.CreditCardDetail?.MinimumPaymentFloor,
+        CashOutInterestRate = account.CreditCardDetail?.CashOutInterestRate,
+        CashAdvanceFeePercentage = account.CreditCardDetail?.CashAdvanceFeePercentage,
+        IncludeInPayoffAnalysis = account.CreditCardDetail?.IncludeInPayoffAnalysis ?? true
     };
 
     public static Account ToEntity(CreateAccountRequest request)
@@ -52,7 +59,7 @@ internal static class AccountMapper
             AccountCategoryId = request.AccountCategoryId
         };
 
-        ApplyInterestRate(account, request.InterestRate);
+        ApplyCreditCardDetail(account, request);
         return account;
     }
 
@@ -76,14 +83,60 @@ internal static class AccountMapper
         account.PaidOffDate = request.PaidOffDate;
         account.IsCreditCard = request.IsCreditCard;
         account.AccountCategoryId = request.AccountCategoryId;
-        ApplyInterestRate(account, request.InterestRate);
+        ApplyCreditCardDetail(account, request);
     }
 
-    private static void ApplyInterestRate(Account account, decimal? interestRate)
+    private static void ApplyCreditCardDetail(Account account, CreateAccountRequest request) =>
+        ApplyCreditCardDetail(
+            account,
+            request.InterestRate,
+            request.PromotionalAnnualPercentageRate,
+            request.PromotionalRateExpirationDate,
+            request.MinimumPaymentPercentage,
+            request.MinimumPaymentFloor,
+            request.CashOutInterestRate,
+            request.CashAdvanceFeePercentage,
+            request.IncludeInPayoffAnalysis,
+            request.IsCreditCard);
+
+    private static void ApplyCreditCardDetail(Account account, UpdateAccountRequest request) =>
+        ApplyCreditCardDetail(
+            account,
+            request.InterestRate,
+            request.PromotionalAnnualPercentageRate,
+            request.PromotionalRateExpirationDate,
+            request.MinimumPaymentPercentage,
+            request.MinimumPaymentFloor,
+            request.CashOutInterestRate,
+            request.CashAdvanceFeePercentage,
+            request.IncludeInPayoffAnalysis,
+            request.IsCreditCard);
+
+    private static void ApplyCreditCardDetail(
+        Account account,
+        decimal? interestRate,
+        decimal? promotionalAnnualPercentageRate,
+        DateTime? promotionalRateExpirationDate,
+        decimal? minimumPaymentPercentage,
+        decimal? minimumPaymentFloor,
+        decimal? cashOutInterestRate,
+        decimal? cashAdvanceFeePercentage,
+        bool includeInPayoffAnalysis,
+        bool? isCreditCard)
     {
+        var hasDetailFields =
+            interestRate is not null
+            || promotionalAnnualPercentageRate is not null
+            || promotionalRateExpirationDate is not null
+            || minimumPaymentPercentage is not null
+            || minimumPaymentFloor is not null
+            || cashOutInterestRate is not null
+            || cashAdvanceFeePercentage is not null
+            || !includeInPayoffAnalysis;
+
         if (account.CreditCardDetail is null)
         {
-            if (interestRate is null && account.IsCreditCard != true)
+            if (!hasDetailFields && isCreditCard != true)
             {
                 return;
             }
@@ -92,5 +145,14 @@ internal static class AccountMapper
         }
 
         account.CreditCardDetail.InterestRate = interestRate;
+        account.CreditCardDetail.PromotionalAnnualPercentageRate = promotionalAnnualPercentageRate;
+        account.CreditCardDetail.PromotionalRateExpirationDate = promotionalRateExpirationDate.HasValue
+            ? DateTime.SpecifyKind(promotionalRateExpirationDate.Value.ToUniversalTime().Date, DateTimeKind.Utc)
+            : null;
+        account.CreditCardDetail.MinimumPaymentPercentage = minimumPaymentPercentage;
+        account.CreditCardDetail.MinimumPaymentFloor = minimumPaymentFloor;
+        account.CreditCardDetail.CashOutInterestRate = cashOutInterestRate;
+        account.CreditCardDetail.CashAdvanceFeePercentage = cashAdvanceFeePercentage;
+        account.CreditCardDetail.IncludeInPayoffAnalysis = includeInPayoffAnalysis;
     }
 }

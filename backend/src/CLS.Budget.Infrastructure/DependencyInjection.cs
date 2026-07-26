@@ -58,6 +58,9 @@ public static class DependencyInjection
         services.AddScoped<IBudgetTemplateRepository, BudgetTemplateRepository>();
         services.AddScoped<IAccountCategoryRepository, AccountCategoryRepository>();
         services.AddScoped<ITransactionImportRepository, TransactionImportRepository>();
+        services.AddScoped<IForecastScenarioRepository, ForecastScenarioRepository>();
+        services.AddScoped<ISavedPayoffPlanRepository, SavedPayoffPlanRepository>();
+        services.AddScoped<IActivePayoffPlanRepository, ActivePayoffPlanRepository>();
 
         // Authentication / identity
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));

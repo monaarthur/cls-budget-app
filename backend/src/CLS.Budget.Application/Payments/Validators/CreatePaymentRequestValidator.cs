@@ -13,6 +13,6 @@ public sealed class CreatePaymentRequestValidator : AbstractValidator<CreatePaym
         RuleFor(x => x.PaymentMade).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Amount).GreaterThanOrEqualTo(0);
         RuleFor(x => x.PaymentDate).NotEmpty();
-        RuleFor(x => x.Notes).MaximumLength(1000);
+        RuleFor(x => x.Notes).MaximumLength(4000);
     }
 }

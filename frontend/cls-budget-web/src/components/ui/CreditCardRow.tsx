@@ -6,7 +6,7 @@ import type { AccountResponse } from "@/features/accounts/types/account";
 
 function utilizationPercent(balance: number, limit: number): number {
   if (limit <= 0) return 0;
-  return Math.min(100, Math.round((balance / limit) * 100));
+  return Math.round((balance / limit) * 100);
 }
 
 function utilizationClass(percent: number): string {
@@ -49,11 +49,12 @@ export function CreditCardRow({
             <div className="utilization-track h-1.5 w-full overflow-hidden rounded-full">
               <div
                 className={`utilization-fill ${utilizationClass(utilization)}`}
-                style={{ width: `${utilization}%` }}
+                style={{ width: `${Math.min(100, utilization)}%` }}
               />
             </div>
             <p className="mt-1 text-[10px] text-[var(--muted)]">
               {utilization}% of {formatCurrency(account.limit)} limit
+              {utilization > 100 ? " (over limit)" : ""}
             </p>
           </div>
         ) : null}

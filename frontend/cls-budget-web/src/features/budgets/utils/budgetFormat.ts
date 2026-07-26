@@ -26,7 +26,27 @@ export function sortBudgetsByRecent(budgets: BudgetResponse[]): BudgetResponse[]
   );
 }
 
-export const RECENT_BUDGETS_LIMIT = 5;
+/** Newest year first; within each year, newest start period first. */
+export function groupBudgetsByYear(
+  budgets: BudgetResponse[],
+): { year: number; budgets: BudgetResponse[] }[] {
+  const sorted = sortBudgetsByRecent(budgets);
+  const byYear = new Map<number, BudgetResponse[]>();
+
+  for (const budget of sorted) {
+    const year = getBudgetYear(budget.startPeriod);
+    const group = byYear.get(year);
+    if (group) {
+      group.push(budget);
+    } else {
+      byYear.set(year, [budget]);
+    }
+  }
+
+  return [...byYear.entries()]
+    .sort(([yearA], [yearB]) => yearB - yearA)
+    .map(([year, yearBudgets]) => ({ year, budgets: yearBudgets }));
+}
 
 export function toDateInputValue(iso: string): string {
   return iso.slice(0, 10);

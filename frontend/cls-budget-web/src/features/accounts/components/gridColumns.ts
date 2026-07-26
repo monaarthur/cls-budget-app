@@ -4,9 +4,12 @@ export const GRID_COLUMNS = [
   { colId: "balance", label: "Balance" },
   { colId: "limit", label: "Limit" },
   { colId: "interestRate", label: "APR" },
+  { colId: "cashOutInterestRate", label: "Cash advance APR %" },
+  { colId: "cashAdvanceFeePercentage", label: "Cash advance fee %" },
   { colId: "monthlyPayment", label: "Monthly" },
   { colId: "paymentDay", label: "Payment day" },
   { colId: "accountCategoryName", label: "Category" },
+  { colId: "excludeFromPayoff", label: "Exclude payoff" },
   { colId: "isPaidOff", label: "Paid off" },
   { colId: "accountOpenDate", label: "Opened" },
   { colId: "paidOffDate", label: "Paid off date" },
@@ -36,4 +39,9 @@ export const CREDIT_CARD_EXCLUDED_COLUMNS = new Set([
 ]);
 
 /** Not shown on the regular accounts grid (credit-card-only fields). */
-export const ACCOUNT_EXCLUDED_COLUMNS = new Set(["interestRate"]);
+export const ACCOUNT_EXCLUDED_COLUMNS = new Set([
+  "interestRate",
+  "cashOutInterestRate",
+  "cashAdvanceFeePercentage",
+  "excludeFromPayoff",
+]);

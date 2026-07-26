@@ -4,7 +4,7 @@ import { TopBar } from "@/components/layout/TopBar";
 export default function BudgetsPage() {
   return (
     <>
-      <TopBar title="Budgets" />
+      <TopBar title="Budget List" />
       <BudgetsView />
     </>
   );

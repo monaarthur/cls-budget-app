@@ -6,6 +6,10 @@ import { getAccountCategoryName } from "@/features/accounts/data/accountCategori
 import type { AccountResponse } from "@/features/accounts/types/account";
 import { defaultPaymentDateForAccount } from "@/features/budgets/utils/budgetGridMapper";
 import { dateInputToIso, toDateInputValue } from "@/features/budgets/utils/budgetFormat";
+import {
+  createPaymentLineNote,
+  serializePaymentLineNotes,
+} from "@/features/budgets/utils/paymentLineNotes";
 import { paymentsApi } from "@/features/payments/api/paymentsApi";
 import type { BudgetPaymentStatusResponse } from "@/features/payments/types/payment";
 import { Card } from "@/components/ui/Card";
@@ -128,7 +132,10 @@ export function AddBudgetPaymentDialog({
         budgetPaymentStatusId,
         isCleared: false,
         paymentDate: dateInputToIso(paymentDate),
-        notes: trimmedNotes.length > 0 ? trimmedNotes : null,
+        notes:
+          trimmedNotes.length > 0
+            ? serializePaymentLineNotes([createPaymentLineNote(trimmedNotes)])
+            : null,
       });
       onAdded(selectedAccount?.name ?? "Account");
       onClose();
@@ -276,14 +283,14 @@ export function AddBudgetPaymentDialog({
               </label>
 
               <label className="block text-sm">
-                <span className="mb-1.5 block font-medium">Line notes</span>
+                <span className="mb-1.5 block font-medium">Line to-do</span>
                 <textarea
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
                   disabled={submitting}
                   rows={2}
-                  maxLength={1000}
-                  placeholder="Optional note for this payment line"
+                  maxLength={500}
+                  placeholder="Optional first to-do (dated automatically)"
                   className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2.5 text-sm"
                 />
                 {selectedAccount?.notes?.trim() ? (

@@ -22,12 +22,19 @@ export function RegisterForm() {
     setSubmitting(true);
     setError(null);
 
+    const householdName = tenantName.trim();
+    if (!householdName) {
+      setError("Enter a household name.");
+      setSubmitting(false);
+      return;
+    }
+
     try {
       await register({
         email: email.trim(),
         password,
         displayName: displayName.trim(),
-        tenantName: tenantName.trim() || undefined,
+        tenantName: householdName,
       });
       router.replace("/");
     } catch (err) {
@@ -68,13 +75,17 @@ export function RegisterForm() {
         </label>
 
         <label className="flex flex-col gap-1.5 text-sm font-medium">
-          Household name{" "}
-          <span className="font-normal text-[var(--muted)]">(optional)</span>
+          Household name
+          <span className="font-normal text-[var(--muted)]">
+            A name for your shared budget space (family, couple, or household).
+          </span>
           <input
             type="text"
+            required
+            maxLength={200}
             value={tenantName}
             onChange={(e) => setTenantName(e.target.value)}
-            placeholder="e.g. MonaArthur"
+            placeholder="e.g. The Arthur Family"
             className="rounded-xl border border-[var(--border)] bg-white px-3 py-2.5 font-normal outline-none focus:ring-2 focus:ring-[var(--accent-soft)]"
           />
         </label>

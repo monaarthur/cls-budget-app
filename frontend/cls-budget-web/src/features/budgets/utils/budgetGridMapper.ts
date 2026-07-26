@@ -192,7 +192,7 @@ export function toUpdatePaymentRequest(
     clearedDate: normalizeGridDateIso(row.clearedDate),
     paymentSourceId: row.paymentSourceId,
     incomeSourceId: row.incomeSourceId ?? null,
-    notes: row.notes?.trim() ? row.notes.trim() : null,
+    notes: row.notes?.trim() ? row.notes : null,
   };
 }
 

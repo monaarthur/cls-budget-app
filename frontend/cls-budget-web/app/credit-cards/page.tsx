@@ -6,12 +6,18 @@ export default function CreditCardsPage() {
   return (
     <>
       <TopBar title="Credit cards" />
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap gap-4">
         <Link
           href="/credit-cards/grid"
           className="text-sm font-medium text-[var(--link)] hover:underline"
         >
           Open editable grid →
+        </Link>
+        <Link
+          href="/credit-cards/calculators"
+          className="text-sm font-medium text-[var(--link)] hover:underline"
+        >
+          Credit Card Calculator →
         </Link>
       </div>
       <CreditCardList />

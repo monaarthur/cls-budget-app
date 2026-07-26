@@ -48,6 +48,8 @@ import { AddBudgetAccountDialog } from "@/features/budgets/components/AddBudgetA
 import { AddBudgetPaymentDialog } from "@/features/budgets/components/AddBudgetPaymentDialog";
 import { AddIncomeDialog } from "@/features/incomes/components/AddIncomeDialog";
 import { AccountNameCellRenderer } from "@/features/budgets/components/AccountNameCellRenderer";
+import { BudgetPaymentNotesModal } from "@/features/budgets/components/BudgetPaymentNotesModal";
+import { NotesPreviewCellRenderer } from "@/features/budgets/components/NotesPreviewCellRenderer";
 import { BUDGET_GRID_MODE_LABELS, type BudgetGridMode } from "@/features/budgets/components/budgetGridColumns";
 import {
   applyBudgetGridMode,
@@ -82,6 +84,7 @@ import {
   toUpdatePaymentRequest,
   type BudgetGridRow,
 } from "@/features/budgets/utils/budgetGridMapper";
+import { formatPaymentLineNotesPreview } from "@/features/budgets/utils/paymentLineNotes";
 import { incomesApi } from "@/features/incomes/api/incomesApi";
 import { incomeSourcesApi } from "@/features/incomes/api/incomeSourcesApi";
 import type { IncomeSummaryResponse } from "@/features/incomes/types/income";
@@ -159,6 +162,7 @@ interface BudgetGridContext {
   onRemoveAccount: (accountId: number, accountName: string) => void;
   onDeletePayment: (budgetPaymentId: number) => void;
   onAddPaymentForAccount: (accountId: number) => void;
+  onOpenNotes: (row: BudgetGridRow) => void;
 }
 
 function PaymentHalfPanel({
@@ -275,6 +279,9 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   const [addAccountOpen, setAddAccountOpen] = useState(false);
   const [addPaymentOpen, setAddPaymentOpen] = useState(false);
   const [addIncomeOpen, setAddIncomeOpen] = useState(false);
+  const [notesModalRow, setNotesModalRow] = useState<BudgetGridRow | null>(
+    null,
+  );
   const [addPaymentAccountId, setAddPaymentAccountId] = useState<
     number | undefined
   >(undefined);
@@ -691,6 +698,10 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
     [ensureAccountMutationAllowed],
   );
 
+  const handleOpenNotes = useCallback((row: BudgetGridRow) => {
+    setNotesModalRow(row);
+  }, []);
+
   const gridContext = useMemo<BudgetGridContext>(
     () => ({
       rowData,
@@ -700,12 +711,14 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       onRemoveAccount: handleRemoveAccount,
       onDeletePayment: handleDeletePayment,
       onAddPaymentForAccount: handleAddPaymentForAccount,
+      onOpenNotes: handleOpenNotes,
     }),
     [
       accountMutating,
       budgetAccountIds.length,
       handleAddPaymentForAccount,
       handleDeletePayment,
+      handleOpenNotes,
       handleRemoveAccount,
       paymentMutating,
       rowData,
@@ -1099,38 +1112,28 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       {
         colId: "notes",
         field: "notes",
-        headerName: "Line notes",
-        editable: editableUnlessPinned(),
+        headerName: "Line to-dos",
+        editable: false,
         filter: "agTextColumnFilter",
-        width: 180,
-        minWidth: 120,
-        maxWidth: 320,
+        width: 200,
+        minWidth: 140,
+        maxWidth: 340,
         cellClass: "ag-cell-name",
-        tooltipField: "notes",
-        valueSetter: (params: ValueSetterParams<BudgetGridRow>) => {
-          if (!params.data) return false;
-          const next = String(params.newValue ?? "").trim();
-          params.data.notes = next.length > 0 ? next : null;
-          return true;
-        },
+        cellRenderer: NotesPreviewCellRenderer,
+        filterValueGetter: (params: ValueGetterParams<BudgetGridRow>) =>
+          formatPaymentLineNotesPreview(params.data?.notes),
       },
       {
         colId: "accountNotes",
         field: "accountNotes",
         headerName: "Account notes",
-        editable: editableUnlessPinned(),
+        editable: false,
         filter: "agTextColumnFilter",
         width: 180,
         minWidth: 120,
         maxWidth: 320,
         cellClass: "ag-cell-name",
-        tooltipField: "accountNotes",
-        valueSetter: (params: ValueSetterParams<BudgetGridRow>) => {
-          if (!params.data) return false;
-          const next = String(params.newValue ?? "").trim();
-          params.data.accountNotes = next.length > 0 ? next : null;
-          return true;
-        },
+        cellRenderer: NotesPreviewCellRenderer,
       },
       {
         colId: "actions",
@@ -1361,6 +1364,85 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
     [refreshPinnedTotals],
   );
 
+  const handleApplyNotesFromModal = useCallback(
+    (notes: { lineNotes: string | null; accountNotes: string | null }) => {
+      if (!notesModalRow) return;
+
+      const api = gridRef.current?.api;
+      const current =
+        rowData.find(
+          (row) => row.budgetPaymentId === notesModalRow.budgetPaymentId,
+        ) ?? notesModalRow;
+
+      const lineChanged = (current.notes ?? null) !== notes.lineNotes;
+      const accountChanged =
+        (current.accountNotes ?? null) !== notes.accountNotes;
+
+      if (!lineChanged && !accountChanged) {
+        setNotesModalRow(null);
+        return;
+      }
+
+      const updated: BudgetGridRow = {
+        ...current,
+        notes: notes.lineNotes,
+        accountNotes: notes.accountNotes,
+      };
+
+      if (lineChanged) {
+        dirtyIds.current.add(updated.budgetPaymentId);
+      }
+
+      if (accountChanged) {
+        dirtyAccountIds.current.add(updated.accountId);
+        const account = accountsByIdRef.current.get(updated.accountId);
+        if (account) {
+          accountsByIdRef.current.set(updated.accountId, {
+            ...account,
+            notes: notes.accountNotes,
+          });
+        }
+      }
+
+      setRowData((prev) =>
+        prev.map((row) => {
+          if (row.budgetPaymentId === updated.budgetPaymentId) {
+            return updated;
+          }
+          if (accountChanged && row.accountId === updated.accountId) {
+            return { ...row, accountNotes: notes.accountNotes };
+          }
+          return row;
+        }),
+      );
+
+      setPendingCount(dirtyIds.current.size + dirtyAccountIds.current.size);
+      setDirtyRevision((revision) => revision + 1);
+
+      if (api) {
+        const nodes: IRowNode<BudgetGridRow>[] = [];
+        api.forEachNode((rowNode) => {
+          if (
+            rowNode.data?.budgetPaymentId === updated.budgetPaymentId ||
+            (accountChanged && rowNode.data?.accountId === updated.accountId)
+          ) {
+            nodes.push(rowNode);
+          }
+        });
+        if (nodes.length > 0) {
+          api.refreshCells({
+            rowNodes: nodes,
+            columns: ["notes", "accountNotes", "accountName"],
+          });
+          api.redrawRows({ rowNodes: nodes });
+        }
+      }
+
+      setNotesModalRow(null);
+    },
+    [notesModalRow, rowData],
+  );
+
   const dateEditKey = (budgetPaymentId: number, colId: string) =>
     `${budgetPaymentId}:${colId}`;
 
@@ -1549,12 +1631,12 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
               <div className="mt-2 h-9 w-36 animate-pulse rounded-lg bg-white/20" />
             ) : (
               <p className="mt-1 text-3xl font-bold tracking-tight text-white">
-                {formatCurrency(totalBudgeted)}
+                {formatCurrency(totalPaid)}
               </p>
             )}
             {!loading ? (
               <p className="mt-2 text-xs text-white/70">
-                {formatCurrency(totalPaid)} paid · {clearedCount} of{" "}
+                {formatCurrency(totalBudgeted)} budgeted · {clearedCount} of{" "}
                 {rowData.length} cleared
                 {budgetPeriod ? ` · ${budgetPeriod}` : ""}
                 {paySchedule ? ` · ${paySchedule.name}` : ""}
@@ -1884,8 +1966,17 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
 
       <p className="text-center text-xs text-[var(--muted)] opacity-70">
         Click a pay-period summary to filter the grid · Double-click to edit ·
-        Column layout is saved in this browser · Save when done
+        Click the note icon or a notes cell to expand · Save when done
       </p>
+
+      {notesModalRow ? (
+        <BudgetPaymentNotesModal
+          row={notesModalRow}
+          disabled={saving}
+          onClose={() => setNotesModalRow(null)}
+          onApply={handleApplyNotesFromModal}
+        />
+      ) : null}
 
       {addPaymentOpen ? (
         <AddBudgetPaymentDialog

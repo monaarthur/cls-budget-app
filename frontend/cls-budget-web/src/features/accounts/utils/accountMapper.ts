@@ -25,6 +25,13 @@ export function toUpdateAccountRequest(row: AccountGridRow): UpdateAccountReques
     isCreditCard: row.isCreditCard,
     accountCategoryId: row.accountCategoryId,
     interestRate: row.interestRate,
+    promotionalAnnualPercentageRate: row.promotionalAnnualPercentageRate,
+    promotionalRateExpirationDate: row.promotionalRateExpirationDate,
+    minimumPaymentPercentage: row.minimumPaymentPercentage,
+    minimumPaymentFloor: row.minimumPaymentFloor,
+    cashOutInterestRate: row.cashOutInterestRate,
+    cashAdvanceFeePercentage: row.cashAdvanceFeePercentage,
+    includeInPayoffAnalysis: row.includeInPayoffAnalysis ?? true,
   };
 }
 

@@ -26,5 +26,20 @@ public sealed class UpdateAccountRequestValidator : AbstractValidator<UpdateAcco
         RuleFor(x => x.InterestRate)
             .GreaterThanOrEqualTo(0)
             .When(x => x.InterestRate.HasValue);
+        RuleFor(x => x.PromotionalAnnualPercentageRate)
+            .GreaterThanOrEqualTo(0)
+            .When(x => x.PromotionalAnnualPercentageRate.HasValue);
+        RuleFor(x => x.MinimumPaymentPercentage)
+            .GreaterThanOrEqualTo(0)
+            .When(x => x.MinimumPaymentPercentage.HasValue);
+        RuleFor(x => x.MinimumPaymentFloor)
+            .GreaterThanOrEqualTo(0)
+            .When(x => x.MinimumPaymentFloor.HasValue);
+        RuleFor(x => x.CashOutInterestRate)
+            .GreaterThanOrEqualTo(0)
+            .When(x => x.CashOutInterestRate.HasValue);
+        RuleFor(x => x.CashAdvanceFeePercentage)
+            .GreaterThanOrEqualTo(0)
+            .When(x => x.CashAdvanceFeePercentage.HasValue);
     }
 }
