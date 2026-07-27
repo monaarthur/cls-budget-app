@@ -28,39 +28,18 @@ The current application already contains:
 
 If any of these items do not yet exist, add them before implementing the decision engines.
 
----
 
-## 3. Recommended Solution Structure
 
-```text
-CreditCardEngine.sln
-
-src/
-  CreditCardEngine.Api/
-  CreditCardEngine.Application/
-  CreditCardEngine.Domain/
-  CreditCardEngine.Infrastructure/
-  CreditCardEngine.Worker/
-
-tests/
-  CreditCardEngine.UnitTests/
-  CreditCardEngine.IntegrationTests/
-```
-
-### Project Responsibilities
-
-#### CreditCardEngine.Api
+## 3. CreditCardEngine API Updates
 
 Contains:
 
-- Controllers or minimal API endpoints
+- Controllers 
 - Request and response models
-- Authentication and authorization
 - API validation
-- Exception handling middleware
-- OpenAPI and Swagger configuration
 
-#### CreditCardEngine.Application
+
+#### CreditCardEngine Application Updates
 
 Contains:
 
@@ -71,7 +50,7 @@ Contains:
 - DTO mapping
 - Interfaces for infrastructure dependencies
 
-#### CreditCardEngine.Domain
+#### CreditCardEngine Domain
 
 Contains:
 
@@ -83,16 +62,8 @@ Contains:
 - Recommendation rules
 - Domain exceptions
 
-#### CreditCardEngine.Infrastructure
 
-Contains:
-
-- EF Core DbContext
-- Database configurations
-- Repositories
-- External integrations
-- Caching
-- Logging implementations
+## 3. CreditCardEngine Worker Updates
 
 #### CreditCardEngine.Worker
 
