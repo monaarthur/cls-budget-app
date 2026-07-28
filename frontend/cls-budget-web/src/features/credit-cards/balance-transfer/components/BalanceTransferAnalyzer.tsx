@@ -9,7 +9,11 @@ import type {
   CalculationEnvelope,
 } from "@/features/credit-cards/balance-transfer/types";
 import { ApiError } from "@/lib/api/client";
-import { formatCurrencyDetailed } from "@/lib/format";
+import {
+  formatCurrencyDetailed,
+  parseMoneyInput,
+  sanitizeMoneyInput,
+} from "@/lib/format";
 
 const DISCLAIMER =
   "The calculations and recommendations provided by this application are estimates for educational and planning purposes only. They are not financial, legal, tax, or credit advice. Actual interest charges, credit-score effects, fees, and payoff dates may differ based on lender rules, transaction timing, and account activity.";
@@ -60,18 +64,27 @@ export function BalanceTransferAnalyzer() {
     event.preventDefault();
 
     const body = {
-      transferAmount: Number(transferAmount),
-      currentAnnualPercentageRate: Number(currentApr),
-      promotionalAnnualPercentageRate: Number(promoApr),
-      promotionalPeriodMonths: Number(promoMonths),
-      transferFeePercentage: Number(feePercent),
-      transferFeeFlatAmount: Number(feeFlat),
-      newRegularAnnualPercentageRate: Number(newRegularApr),
-      plannedMonthlyPayment: Number(monthlyPayment),
-      availableTransferLimit: Number(transferLimit),
+      transferAmount: parseMoneyInput(transferAmount),
+      currentAnnualPercentageRate: parseMoneyInput(currentApr),
+      promotionalAnnualPercentageRate: parseMoneyInput(promoApr),
+      promotionalPeriodMonths: parseMoneyInput(promoMonths),
+      transferFeePercentage: parseMoneyInput(feePercent),
+      transferFeeFlatAmount: parseMoneyInput(feeFlat) ?? 0,
+      newRegularAnnualPercentageRate: parseMoneyInput(newRegularApr),
+      plannedMonthlyPayment: parseMoneyInput(monthlyPayment),
+      availableTransferLimit: parseMoneyInput(transferLimit),
     };
 
-    if (Object.values(body).some((value) => !Number.isFinite(value))) {
+    if (
+      body.transferAmount === null ||
+      body.currentAnnualPercentageRate === null ||
+      body.promotionalAnnualPercentageRate === null ||
+      body.promotionalPeriodMonths === null ||
+      body.transferFeePercentage === null ||
+      body.newRegularAnnualPercentageRate === null ||
+      body.plannedMonthlyPayment === null ||
+      body.availableTransferLimit === null
+    ) {
       setStatus("Enter valid numbers for every field.");
       return;
     }
@@ -79,7 +92,17 @@ export function BalanceTransferAnalyzer() {
     setAnalyzing(true);
     setStatus(null);
     try {
-      const result = await balanceTransferApi.analyze(body);
+      const result = await balanceTransferApi.analyze({
+        transferAmount: body.transferAmount,
+        currentAnnualPercentageRate: body.currentAnnualPercentageRate,
+        promotionalAnnualPercentageRate: body.promotionalAnnualPercentageRate,
+        promotionalPeriodMonths: body.promotionalPeriodMonths,
+        transferFeePercentage: body.transferFeePercentage,
+        transferFeeFlatAmount: body.transferFeeFlatAmount,
+        newRegularAnnualPercentageRate: body.newRegularAnnualPercentageRate,
+        plannedMonthlyPayment: body.plannedMonthlyPayment,
+        availableTransferLimit: body.availableTransferLimit,
+      });
       setEnvelope(result);
     } catch (err) {
       const message =
@@ -251,10 +274,10 @@ function Field({
     <label className="block text-sm">
       <span className="mb-1.5 block font-medium">{label}</span>
       <input
-        type="number"
-        step="any"
+        type="text"
+        inputMode="decimal"
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => onChange(sanitizeMoneyInput(event.target.value))}
         disabled={disabled}
         className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2.5 text-sm"
       />

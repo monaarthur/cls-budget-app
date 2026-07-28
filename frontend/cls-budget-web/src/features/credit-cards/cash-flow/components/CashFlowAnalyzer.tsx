@@ -9,7 +9,11 @@ import type {
   CashFlowAnalysisResult,
 } from "@/features/credit-cards/cash-flow/types";
 import { ApiError } from "@/lib/api/client";
-import { formatCurrencyDetailed } from "@/lib/format";
+import {
+  formatCurrencyDetailed,
+  parseMoneyInput,
+  sanitizeMoneyInput,
+} from "@/lib/format";
 
 const DISCLAIMER =
   "The calculations and recommendations provided by this application are estimates for educational and planning purposes only. They are not financial, legal, tax, or credit advice. Actual interest charges, credit-score effects, fees, and payoff dates may differ based on lender rules, transaction timing, and account activity.";
@@ -33,23 +37,30 @@ export function CashFlowAnalyzer() {
     event.preventDefault();
 
     const required = {
-      monthlyNetIncome: Number(monthlyNetIncome),
-      requiredExpenses: Number(requiredExpenses),
-      variableExpenses: Number(variableExpenses),
-      emergencySavingsContribution: Number(savings),
-      safetyBuffer: Number(safetyBuffer),
-      additionalAvailableFunds: Number(additionalFunds || "0"),
+      monthlyNetIncome: parseMoneyInput(monthlyNetIncome),
+      requiredExpenses: parseMoneyInput(requiredExpenses),
+      variableExpenses: parseMoneyInput(variableExpenses),
+      emergencySavingsContribution: parseMoneyInput(savings),
+      safetyBuffer: parseMoneyInput(safetyBuffer),
+      additionalAvailableFunds: parseMoneyInput(additionalFunds || "0") ?? 0,
     };
 
-    if (Object.values(required).some((value) => !Number.isFinite(value) || value < 0)) {
+    if (
+      Object.entries(required).some(
+        ([key, value]) =>
+          key !== "additionalAvailableFunds" &&
+          (value === null || value < 0),
+      ) ||
+      required.additionalAvailableFunds < 0
+    ) {
       setStatus("Enter valid non-negative numbers for income, expenses, savings, and buffer.");
       return;
     }
 
     let existingDebtMinimums: number | null = null;
     if (debtMinimums.trim() !== "") {
-      const mins = Number(debtMinimums);
-      if (!Number.isFinite(mins) || mins < 0) {
+      const mins = parseMoneyInput(debtMinimums);
+      if (mins === null || mins < 0) {
         setStatus("Debt minimums must be a non-negative number, or blank to use card minimums.");
         return;
       }
@@ -58,8 +69,8 @@ export function CashFlowAnalyzer() {
 
     let userOverrideExtraPayment: number | null = null;
     if (overrideExtra.trim() !== "") {
-      const override = Number(overrideExtra);
-      if (!Number.isFinite(override) || override < 0) {
+      const override = parseMoneyInput(overrideExtra);
+      if (override === null || override < 0) {
         setStatus("Override extra payment must be a non-negative number, or blank.");
         return;
       }
@@ -70,7 +81,12 @@ export function CashFlowAnalyzer() {
     setStatus(null);
     try {
       const result = await cashFlowApi.analyze({
-        ...required,
+        monthlyNetIncome: required.monthlyNetIncome!,
+        requiredExpenses: required.requiredExpenses!,
+        variableExpenses: required.variableExpenses!,
+        emergencySavingsContribution: required.emergencySavingsContribution!,
+        safetyBuffer: required.safetyBuffer!,
+        additionalAvailableFunds: required.additionalAvailableFunds,
         existingDebtMinimums,
         userOverrideExtraPayment,
       });
@@ -246,10 +262,10 @@ function Field({
     <label className="block text-sm">
       <span className="mb-1.5 block font-medium">{label}</span>
       <input
-        type="number"
-        step="any"
+        type="text"
+        inputMode="decimal"
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => onChange(sanitizeMoneyInput(event.target.value))}
         disabled={disabled}
         placeholder={placeholder}
         className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2.5 text-sm"

@@ -10,6 +10,7 @@ public sealed class UpdateAccountRequest
     public DateTime AccountOpenDate { get; init; }
     public decimal? MonthlyPayment { get; init; }
     public int? PaymentDay { get; init; }
+    public int? GracePeriod { get; init; }
     public string Phone { get; init; } = null!;
     public string Email { get; init; } = null!;
     public string Url { get; init; } = null!;
@@ -20,6 +21,7 @@ public sealed class UpdateAccountRequest
     public DateTime? PaidOffDate { get; init; }
     public bool? IsCreditCard { get; init; }
     public int AccountCategoryId { get; init; }
+    public int? AccountSubCategoryId { get; init; }
     /// <summary>Purchase APR percent (e.g. 22.99).</summary>
     public decimal? InterestRate { get; init; }
     public decimal? PromotionalAnnualPercentageRate { get; init; }

@@ -8,6 +8,8 @@ export interface AccountResponse {
   accountOpenDate: string;
   monthlyPayment: number | null;
   paymentDay: number | null;
+  gracePeriod?: number | null;
+  graceDay?: number | null;
   phone: string;
   email: string;
   url: string;
@@ -17,6 +19,9 @@ export interface AccountResponse {
   paidOffDate: string | null;
   isCreditCard: boolean | null;
   accountCategoryId: number;
+  accountCategoryName?: string | null;
+  accountSubCategoryId?: number | null;
+  accountSubCategoryName?: string | null;
   /** Purchase APR percent (e.g. 22.99). */
   interestRate: number | null;
   promotionalAnnualPercentageRate?: number | null;
@@ -40,6 +45,9 @@ export interface CreateAccountRequest {
   accountOpenDate: string;
   monthlyPayment?: number | null;
   paymentDay?: number | null;
+  gracePeriod?: number | null;
+  /** Calculated server-side from paymentDay + gracePeriod; optional on write. */
+  graceDay?: number | null;
   phone: string;
   email: string;
   url: string;
@@ -50,6 +58,7 @@ export interface CreateAccountRequest {
   paidOffDate?: string | null;
   isCreditCard?: boolean | null;
   accountCategoryId: number;
+  accountSubCategoryId?: number | null;
   interestRate?: number | null;
   promotionalAnnualPercentageRate?: number | null;
   promotionalRateExpirationDate?: string | null;

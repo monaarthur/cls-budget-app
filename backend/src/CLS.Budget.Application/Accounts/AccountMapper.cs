@@ -16,6 +16,8 @@ internal static class AccountMapper
         AccountOpenDate = account.AccountOpenDate,
         MonthlyPayment = account.MonthlyPayment,
         PaymentDay = account.PaymentDay,
+        GracePeriod = account.GracePeriod,
+        GraceDay = account.GraceDay,
         Phone = account.Phone,
         Email = account.Email,
         Url = account.Url,
@@ -25,6 +27,9 @@ internal static class AccountMapper
         PaidOffDate = account.PaidOffDate,
         IsCreditCard = account.IsCreditCard,
         AccountCategoryId = account.AccountCategoryId,
+        AccountCategoryName = account.AccountCategory?.Name,
+        AccountSubCategoryId = account.AccountSubCategoryId,
+        AccountSubCategoryName = account.AccountSubCategory?.Name,
         InterestRate = account.CreditCardDetail?.InterestRate,
         PromotionalAnnualPercentageRate = account.CreditCardDetail?.PromotionalAnnualPercentageRate,
         PromotionalRateExpirationDate = account.CreditCardDetail?.PromotionalRateExpirationDate,
@@ -47,6 +52,8 @@ internal static class AccountMapper
             AccountOpenDate = request.AccountOpenDate,
             MonthlyPayment = request.MonthlyPayment,
             PaymentDay = request.PaymentDay,
+            GracePeriod = request.GracePeriod,
+            GraceDay = CalculateGraceDay(request.PaymentDay, request.GracePeriod),
             Phone = request.Phone,
             Email = request.Email,
             Url = request.Url,
@@ -56,7 +63,8 @@ internal static class AccountMapper
             IsPaidOff = request.IsPaidOff,
             PaidOffDate = request.PaidOffDate,
             IsCreditCard = request.IsCreditCard,
-            AccountCategoryId = request.AccountCategoryId
+            AccountCategoryId = request.AccountCategoryId,
+            AccountSubCategoryId = request.AccountSubCategoryId
         };
 
         ApplyCreditCardDetail(account, request);
@@ -73,6 +81,8 @@ internal static class AccountMapper
         account.AccountOpenDate = request.AccountOpenDate;
         account.MonthlyPayment = request.MonthlyPayment;
         account.PaymentDay = request.PaymentDay;
+        account.GracePeriod = request.GracePeriod;
+        account.GraceDay = CalculateGraceDay(request.PaymentDay, request.GracePeriod);
         account.Phone = request.Phone;
         account.Email = request.Email;
         account.Url = request.Url;
@@ -83,6 +93,7 @@ internal static class AccountMapper
         account.PaidOffDate = request.PaidOffDate;
         account.IsCreditCard = request.IsCreditCard;
         account.AccountCategoryId = request.AccountCategoryId;
+        account.AccountSubCategoryId = request.AccountSubCategoryId;
         ApplyCreditCardDetail(account, request);
     }
 
@@ -154,5 +165,18 @@ internal static class AccountMapper
         account.CreditCardDetail.CashOutInterestRate = cashOutInterestRate;
         account.CreditCardDetail.CashAdvanceFeePercentage = cashAdvanceFeePercentage;
         account.CreditCardDetail.IncludeInPayoffAnalysis = includeInPayoffAnalysis;
+    }
+
+    /// <summary>
+    /// Day of month when grace ends: PaymentDay + GracePeriod, wrapped into 1–31.
+    /// </summary>
+    internal static int? CalculateGraceDay(int? paymentDay, int? gracePeriod)
+    {
+        if (paymentDay is null || gracePeriod is null)
+        {
+            return null;
+        }
+
+        return ((paymentDay.Value - 1 + gracePeriod.Value) % 31) + 1;
     }
 }

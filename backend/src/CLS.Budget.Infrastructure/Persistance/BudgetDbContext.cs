@@ -13,6 +13,7 @@ public class BudgetDbContext(DbContextOptions<BudgetDbContext> options, ITenantC
 
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<AccountCategory> AccountCategories => Set<AccountCategory>();
+    public DbSet<AccountSubCategory> AccountSubCategories => Set<AccountSubCategory>();
     public DbSet<BudgetTemplate> BudgetTemplates => Set<BudgetTemplate>();
     public DbSet<BudgetModel> Budgets => Set<BudgetModel>();
     public DbSet<PaymentSource> PaymentSources => Set<PaymentSource>();
@@ -44,9 +45,28 @@ public class BudgetDbContext(DbContextOptions<BudgetDbContext> options, ITenantC
 
         modelBuilder.Entity<AccountCategory>(e =>
         {
+            e.ToTable("AccountCategories");
             e.HasKey(x => x.AccountCategoryId);
             e.Property(x => x.Name).IsRequired().HasMaxLength(100);
             e.Property(x => x.Description).HasMaxLength(500);
+            e.Property(x => x.IsSystem).HasDefaultValue(false);
+            e.HasIndex(x => x.TenantId);
+            e.HasIndex(x => new { x.TenantId, x.Name });
+        });
+
+        modelBuilder.Entity<AccountSubCategory>(e =>
+        {
+            e.ToTable("AccountSubCategory");
+            e.HasKey(x => x.AccountSubCategoryId);
+            e.Property(x => x.Name).IsRequired().HasMaxLength(100);
+            e.Property(x => x.Description).HasMaxLength(500);
+            e.HasOne(x => x.AccountCategory)
+                .WithMany(x => x.SubCategories)
+                .HasForeignKey(x => x.AccountCategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.TenantId);
+            e.HasIndex(x => new { x.TenantId, x.AccountCategoryId, x.Name });
+            e.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
         });
 
         modelBuilder.Entity<Account>(e =>
@@ -59,6 +79,8 @@ public class BudgetDbContext(DbContextOptions<BudgetDbContext> options, ITenantC
             e.Property(x => x.Limit);
             e.Property(x => x.MonthlyPayment);
             e.Property(x => x.PaymentDay);
+            e.Property(x => x.GracePeriod);
+            e.Property(x => x.GraceDay);
             e.Property(x => x.Phone).HasMaxLength(50);
             e.Property(x => x.Email).HasMaxLength(200);
             e.Property(x => x.Url).HasMaxLength(500);
@@ -67,6 +89,14 @@ public class BudgetDbContext(DbContextOptions<BudgetDbContext> options, ITenantC
             e.Property(x => x.Notes).HasMaxLength(4000);
             e.HasIndex(x => x.Number);
             e.HasIndex(x => x.TenantId);
+            e.HasOne(x => x.AccountCategory)
+                .WithMany()
+                .HasForeignKey(x => x.AccountCategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.AccountSubCategory)
+                .WithMany()
+                .HasForeignKey(x => x.AccountSubCategoryId)
+                .OnDelete(DeleteBehavior.SetNull);
             e.HasOne(x => x.CreditCardDetail)
                 .WithOne(x => x.Account)
                 .HasForeignKey<CreditCardDetail>(x => x.AccountId)

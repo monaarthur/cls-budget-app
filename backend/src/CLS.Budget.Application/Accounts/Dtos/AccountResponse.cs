@@ -11,6 +11,8 @@ public sealed class AccountResponse
     public DateTime AccountOpenDate { get; init; }
     public decimal? MonthlyPayment { get; init; }
     public int? PaymentDay { get; init; }
+    public int? GracePeriod { get; init; }
+    public int? GraceDay { get; init; }
     public string Phone { get; init; } = null!;
     public string Email { get; init; } = null!;
     public string Url { get; init; } = null!;
@@ -20,6 +22,9 @@ public sealed class AccountResponse
     public DateTime? PaidOffDate { get; init; }
     public bool? IsCreditCard { get; init; }
     public int AccountCategoryId { get; init; }
+    public string? AccountCategoryName { get; init; }
+    public int? AccountSubCategoryId { get; init; }
+    public string? AccountSubCategoryName { get; init; }
     /// <summary>Purchase APR percent (e.g. 22.99), from CreditCardDetail.</summary>
     public decimal? InterestRate { get; init; }
     public decimal? PromotionalAnnualPercentageRate { get; init; }

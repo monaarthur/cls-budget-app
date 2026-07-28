@@ -27,7 +27,11 @@ import type {
   UtilizationSummaryResult,
 } from "@/features/credit-cards/payoff/types";
 import { ApiError } from "@/lib/api/client";
-import { formatCurrencyDetailed } from "@/lib/format";
+import {
+  formatCurrencyDetailed,
+  parseMoneyInput,
+  sanitizeMoneyInput,
+} from "@/lib/format";
 
 const DISCLAIMER =
   "The calculations and recommendations provided by this application are estimates for educational and planning purposes only. They are not financial, legal, tax, or credit advice. Actual interest charges, credit-score effects, fees, and payoff dates may differ based on lender rules, transaction timing, and account activity.";
@@ -343,8 +347,8 @@ export function CreditCardPayoffCalculator() {
     includedCards.length > 0 && (!ratesReady || editingRates);
 
   const totalExtraPayment = useMemo(() => {
-    const value = Number(extraMonthlyPayment);
-    return Number.isFinite(value) && value > 0 ? value : 0;
+    const value = parseMoneyInput(extraMonthlyPayment);
+    return value !== null && value > 0 ? value : 0;
   }, [extraMonthlyPayment]);
 
   const planUtilizationTargetPercent = useMemo(() => {
@@ -491,15 +495,16 @@ export function CreditCardPayoffCalculator() {
   }, []);
 
   useEffect(() => {
-    const amount = Number(loanAmount.trim());
-    if (!Number.isFinite(amount) || amount <= 0) {
+    const amount = parseMoneyInput(loanAmount);
+    if (amount === null || amount <= 0) {
       setLoanSchedule(null);
       setLoanScheduleError(null);
       setLoanScheduleLoading(false);
       return;
     }
 
-    const apr = loanApr.trim() === "" ? 0 : Number(loanApr.trim());
+    const apr =
+      loanApr.trim() === "" ? 0 : (parseMoneyInput(loanApr) ?? Number.NaN);
     if (!Number.isFinite(apr) || apr < 0) {
       setLoanSchedule(null);
       setLoanScheduleError("Loan interest rate must be zero or greater.");
@@ -511,8 +516,8 @@ export function CreditCardPayoffCalculator() {
     let fixedMonthlyPayment: number | null = null;
 
     if (loanType === "Family") {
-      const payment = Number(loanFixedMonthlyPayment.trim());
-      if (!Number.isFinite(payment) || payment <= 0) {
+      const payment = parseMoneyInput(loanFixedMonthlyPayment);
+      if (payment === null || payment <= 0) {
         setLoanSchedule(null);
         setLoanScheduleError(null);
         return;
@@ -686,14 +691,14 @@ export function CreditCardPayoffCalculator() {
     let parsedLoanInterestOnlyMonths: number | null = null;
     let parsedLoanFixedMonthlyPayment: number | null = null;
     if (loanRaw !== "") {
-      const amount = Number(loanRaw);
-      if (!Number.isFinite(amount) || amount <= 0) {
+      const amount = parseMoneyInput(loanRaw);
+      if (amount === null || amount <= 0) {
         return { error: "Loan amount must be greater than zero, or blank to skip." };
       }
       parsedLoanAmount = amount;
       const aprRaw = loanApr.trim();
-      const apr = aprRaw === "" ? 0 : Number(aprRaw);
-      if (!Number.isFinite(apr) || apr < 0) {
+      const apr = aprRaw === "" ? 0 : parseMoneyInput(aprRaw);
+      if (apr === null || apr < 0) {
         return { error: "Loan interest rate must be zero or greater." };
       }
       parsedLoanApr = apr;
@@ -710,8 +715,8 @@ export function CreditCardPayoffCalculator() {
       }
 
       if (loanType === "Family") {
-        const payment = Number(loanFixedMonthlyPayment.trim());
-        if (!Number.isFinite(payment) || payment <= 0) {
+        const payment = parseMoneyInput(loanFixedMonthlyPayment);
+        if (payment === null || payment <= 0) {
           return {
             error: "Enter a fixed monthly payment for a family / private loan.",
           };
@@ -783,8 +788,8 @@ export function CreditCardPayoffCalculator() {
       const amountRaw = row.amount.trim();
       let transferAmount: number | null = null;
       if (amountRaw !== "") {
-        transferAmount = Number(amountRaw);
-        if (!Number.isFinite(transferAmount) || transferAmount <= 0) {
+        transferAmount = parseMoneyInput(amountRaw);
+        if (transferAmount === null || transferAmount <= 0) {
           return {
             error: "Transfer amount must be blank (max) or greater than zero.",
           };
@@ -1703,14 +1708,14 @@ export function CreditCardPayoffCalculator() {
                             Loan amount
                           </span>
                           <input
-                            type="number"
-                            min="0"
-                            step="0.01"
+                            type="text"
                             inputMode="decimal"
                             placeholder="Optional"
                             value={loanAmount}
                             onChange={(event) => {
-                              setLoanAmount(event.target.value);
+                              setLoanAmount(
+                                sanitizeMoneyInput(event.target.value),
+                              );
                               clearResults();
                             }}
                             disabled={comparing}
@@ -1722,14 +1727,14 @@ export function CreditCardPayoffCalculator() {
                             Loan interest rate (APR %)
                           </span>
                           <input
-                            type="number"
-                            min="0"
-                            step="0.01"
+                            type="text"
                             inputMode="decimal"
                             placeholder="e.g. 9.99"
                             value={loanApr}
                             onChange={(event) => {
-                              setLoanApr(event.target.value);
+                              setLoanApr(
+                                sanitizeMoneyInput(event.target.value),
+                              );
                               clearResults();
                             }}
                             disabled={comparing || loanAmount.trim() === ""}
@@ -1797,13 +1802,13 @@ export function CreditCardPayoffCalculator() {
                                 Fixed monthly payment
                               </span>
                               <input
-                                type="number"
-                                min="0"
-                                step="0.01"
+                                type="text"
                                 inputMode="decimal"
                                 value={loanFixedMonthlyPayment}
                                 onChange={(event) => {
-                                  setLoanFixedMonthlyPayment(event.target.value);
+                                  setLoanFixedMonthlyPayment(
+                                    sanitizeMoneyInput(event.target.value),
+                                  );
                                   clearResults();
                                 }}
                                 disabled={comparing}
@@ -2326,14 +2331,14 @@ export function CreditCardPayoffCalculator() {
                             Extra monthly payment
                           </span>
                           <input
-                            type="number"
-                            min="0"
-                            step="0.01"
+                            type="text"
                             inputMode="decimal"
                             placeholder="0"
                             value={extraMonthlyPayment}
                             onChange={(event) => {
-                              setExtraMonthlyPayment(event.target.value);
+                              setExtraMonthlyPayment(
+                                sanitizeMoneyInput(event.target.value),
+                              );
                               clearResults();
                             }}
                             disabled={comparing}
@@ -2604,13 +2609,14 @@ export function CreditCardPayoffCalculator() {
                                 Amount (blank = max)
                               </span>
                               <input
-                                type="number"
-                                min="0"
-                                step="0.01"
+                                type="text"
+                                inputMode="decimal"
                                 value={row.amount}
                                 disabled={comparing}
                                 onChange={(event) => {
-                                  const value = event.target.value;
+                                  const value = sanitizeMoneyInput(
+                                    event.target.value,
+                                  );
                                   setPromoTransfers((current) =>
                                     current.map((item) =>
                                       item.id === row.id

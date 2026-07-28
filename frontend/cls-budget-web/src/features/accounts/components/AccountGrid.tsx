@@ -15,19 +15,25 @@ import {
   type ValueParserParams,
   type ValueSetterParams,
 } from "ag-grid-community";
-import { RefreshCw, RotateCcw, Save, Search } from "lucide-react";
+import { RefreshCw, RotateCcw, Save, Search, Tags } from "lucide-react";
 import { accountsApi } from "@/features/accounts/api/accountsApi";
+import { AddCategoryDialog } from "@/features/accounts/components/AddCategoryDialog";
 import {
-  ACCOUNT_CATEGORY_NAMES,
   compareAccountCategoryIds,
   getAccountCategoryId,
   getAccountCategoryName,
+  getAccountSubCategoryId,
+  getAccountSubCategoryName,
+  getCategoryNames,
+  getSubCategoryNames,
   sortRowsByCategory,
 } from "@/features/accounts/data/accountCategories";
+import { useAccountCategories } from "@/features/accounts/hooks/useAccountCategories";
 import type { AccountGridRow } from "@/features/accounts/utils/accountMapper";
 import {
   formatDateForGrid,
   formatPaymentDay,
+  calculateGraceDay,
   isCreditCardAccount,
   parseGridDate,
   toUpdateAccountRequest,
@@ -54,7 +60,12 @@ import {
 } from "@/features/accounts/components/gridPinnedTotals";
 import { GridActiveFilters } from "@/features/accounts/components/GridActiveFilters";
 import { ApiError } from "@/lib/api/client";
-import { formatCurrency, formatCurrencyDetailed } from "@/lib/format";
+import {
+  formatCurrency,
+  formatCurrencyDetailed,
+  parseMoneyInput,
+  parseMoneyInputOrZero,
+} from "@/lib/format";
 
 import "@/features/accounts/components/account-grid.css";
 
@@ -66,15 +77,12 @@ const ACCOUNT_PINNED_TOTALS: PinnedTotalsConfig = {
 };
 
 function parseNumber(value: unknown): number {
-  if (value === "" || value === null || value === undefined) return 0;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
+  return parseMoneyInputOrZero(value);
 }
 
 function parseOptionalNumber(value: unknown): number | null {
   if (value === "" || value === null || value === undefined) return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
+  return parseMoneyInput(value);
 }
 
 function parseOptionalInteger(value: unknown): number | null {
@@ -135,10 +143,17 @@ export function AccountGrid({ creditCardOnly = false }: AccountGridProps) {
   >([]);
   const [summaryTick, setSummaryTick] = useState(0);
   const [logoVersion, setLogoVersion] = useState(0);
+  const [addCategoryOpen, setAddCategoryOpen] = useState(false);
+  const { categories, reload: reloadCategories } = useAccountCategories();
   const [status, setStatus] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
+
+  const categoryNames = useMemo(
+    () => getCategoryNames(categories),
+    [categories],
+  );
 
   const loadAccounts = useCallback(async () => {
     setLoading(true);
@@ -148,7 +163,7 @@ export function AccountGrid({ creditCardOnly = false }: AccountGridProps) {
       const accounts = (result.data ?? []).filter(
         (account) => !creditCardOnly || isCreditCardAccount(account),
       );
-      setRowData(sortRowsByCategory(accounts, (row) => row.name));
+      setRowData(sortRowsByCategory(accounts, (row) => row.name, categories));
       dirtyIds.current.clear();
       setPendingCount(0);
     } catch (err) {
@@ -164,7 +179,7 @@ export function AccountGrid({ creditCardOnly = false }: AccountGridProps) {
     } finally {
       setLoading(false);
     }
-  }, [creditCardOnly]);
+  }, [categories, creditCardOnly]);
 
   useEffect(() => {
     void loadAccounts();
@@ -298,6 +313,49 @@ export function AccountGrid({ creditCardOnly = false }: AccountGridProps) {
         valueFormatter: (p) => formatPaymentDay(p.value),
         valueParser: (p: ValueParserParams) =>
           parseOptionalInteger(p.newValue),
+        valueSetter: (params: ValueSetterParams<AccountGridRow>) => {
+          if (!params.data) return false;
+          params.data.paymentDay = parseOptionalInteger(params.newValue);
+          params.data.graceDay = calculateGraceDay(
+            params.data.paymentDay,
+            params.data.gracePeriod,
+          );
+          return true;
+        },
+      },
+      {
+        field: "gracePeriod",
+        headerName: "Grace",
+        headerTooltip: "Grace period in days after the payment due date",
+        editable: editableUnlessPinned(),
+        width: 78,
+        minWidth: 70,
+        maxWidth: 90,
+        filter: "agNumberColumnFilter",
+        cellClass: "ag-cell-center",
+        valueParser: (p: ValueParserParams) =>
+          parseOptionalInteger(p.newValue),
+        valueSetter: (params: ValueSetterParams<AccountGridRow>) => {
+          if (!params.data) return false;
+          params.data.gracePeriod = parseOptionalInteger(params.newValue);
+          params.data.graceDay = calculateGraceDay(
+            params.data.paymentDay,
+            params.data.gracePeriod,
+          );
+          return true;
+        },
+      },
+      {
+        field: "graceDay",
+        headerName: "Grace day",
+        headerTooltip: "Auto-calculated from payment day + grace period",
+        editable: false,
+        width: 90,
+        minWidth: 80,
+        maxWidth: 110,
+        filter: "agNumberColumnFilter",
+        cellClass: "ag-cell-center",
+        valueFormatter: (p) => formatPaymentDay(p.value),
       },
       {
         colId: "accountCategoryName",
@@ -308,22 +366,37 @@ export function AccountGrid({ creditCardOnly = false }: AccountGridProps) {
         cellClass: "ag-cell-category",
         valueGetter: (params: ValueGetterParams<AccountGridRow>) =>
           params.data
-            ? getAccountCategoryName(params.data.accountCategoryId)
+            ? params.data.accountCategoryName ??
+              getAccountCategoryName(params.data.accountCategoryId, categories)
             : "",
         valueSetter: (params: ValueSetterParams<AccountGridRow>) => {
           if (!params.data) return false;
-          const categoryId = getAccountCategoryId(String(params.newValue));
+          const categoryId = getAccountCategoryId(
+            String(params.newValue),
+            categories,
+          );
           if (categoryId === undefined) return false;
           params.data.accountCategoryId = categoryId;
+          params.data.accountCategoryName = String(params.newValue);
+          const currentSubName = getAccountSubCategoryName(
+            categoryId,
+            params.data.accountSubCategoryId,
+            categories,
+          );
+          if (!currentSubName) {
+            params.data.accountSubCategoryId = null;
+            params.data.accountSubCategoryName = null;
+          }
           return true;
         },
         cellEditor: "agSelectCellEditor",
         cellEditorParams: {
-          values: ACCOUNT_CATEGORY_NAMES,
+          values: categoryNames,
         },
         filterValueGetter: (params: ValueGetterParams<AccountGridRow>) =>
           params.data
-            ? getAccountCategoryName(params.data.accountCategoryId)
+            ? params.data.accountCategoryName ??
+              getAccountCategoryName(params.data.accountCategoryId, categories)
             : "",
         comparator: (_valueA, _valueB, nodeA, nodeB) => {
           const a = nodeA.data;
@@ -334,8 +407,53 @@ export function AccountGrid({ creditCardOnly = false }: AccountGridProps) {
             b.accountCategoryId,
             a.name,
             b.name,
+            categories,
           );
         },
+      },
+      {
+        colId: "accountSubCategoryName",
+        headerName: "Subcategory",
+        editable: editableUnlessPinned(),
+        filter: "agTextColumnFilter",
+        minWidth: 150,
+        valueGetter: (params: ValueGetterParams<AccountGridRow>) =>
+          params.data
+            ? params.data.accountSubCategoryName ??
+              getAccountSubCategoryName(
+                params.data.accountCategoryId,
+                params.data.accountSubCategoryId,
+                categories,
+              )
+            : "",
+        valueSetter: (params: ValueSetterParams<AccountGridRow>) => {
+          if (!params.data) return false;
+          const raw = String(params.newValue ?? "").trim();
+          if (!raw) {
+            params.data.accountSubCategoryId = null;
+            params.data.accountSubCategoryName = null;
+            return true;
+          }
+          const subCategoryId = getAccountSubCategoryId(
+            params.data.accountCategoryId,
+            raw,
+            categories,
+          );
+          if (subCategoryId === undefined) return false;
+          params.data.accountSubCategoryId = subCategoryId;
+          params.data.accountSubCategoryName = raw;
+          return true;
+        },
+        cellEditor: "agSelectCellEditor",
+        cellEditorParams: (params: { data?: AccountGridRow }) => ({
+          values: [
+            "",
+            ...getSubCategoryNames(
+              params.data?.accountCategoryId ?? 0,
+              categories,
+            ),
+          ],
+        }),
       },
       {
         colId: "excludeFromPayoff",
@@ -445,7 +563,7 @@ export function AccountGrid({ creditCardOnly = false }: AccountGridProps) {
         return !CREDIT_CARD_EXCLUDED_COLUMNS.has(String(colId));
       })
       .map(withHeaderTooltip);
-  }, [creditCardOnly, logoVersion]);
+  }, [categories, categoryNames, creditCardOnly, logoVersion]);
 
   const defaultColDef = useMemo<ColDef>(
     () => ({
@@ -638,6 +756,16 @@ export function AccountGrid({ creditCardOnly = false }: AccountGridProps) {
           </div>
 
           <div className="account-grid-toolbar-actions">
+            {!creditCardOnly ? (
+              <button
+                type="button"
+                onClick={() => setAddCategoryOpen(true)}
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm font-medium"
+              >
+                <Tags size={15} aria-hidden />
+                Categories
+              </button>
+            ) : null}
             <ColumnPicker
               gridApi={gridApi}
               columnStateNamespace={columnStateNamespace}
@@ -733,6 +861,15 @@ export function AccountGrid({ creditCardOnly = false }: AccountGridProps) {
         Double-click to edit · Column layout is saved in this browser · Save when
         done
       </p>
+      {addCategoryOpen ? (
+        <AddCategoryDialog
+          categories={categories}
+          onClose={() => setAddCategoryOpen(false)}
+          onSaved={async () => {
+            await reloadCategories();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

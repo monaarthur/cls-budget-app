@@ -14,6 +14,7 @@ import {
   type PaymentTiming,
 } from "@/features/payments/utils/paymentTiming";
 import type { PaymentResponse } from "@/features/payments/types/payment";
+import { computeYtdSpendingByCategory } from "@/features/dashboard/utils/ytdSpendingByCategory";
 import { ApiError } from "@/lib/api/client";
 
 export type DashboardPaymentPreview = PaymentResponse & {
@@ -130,6 +131,11 @@ export function useDashboardSummary() {
     [accounts],
   );
 
+  const ytdSpendingByCategory = useMemo(
+    () => computeYtdSpendingByCategory(payments, accounts),
+    [accounts, payments],
+  );
+
   return {
     accounts,
     budgets,
@@ -138,6 +144,7 @@ export function useDashboardSummary() {
     totalBalance,
     monthlyPayments,
     upcomingPayments,
+    ytdSpendingByCategory,
     loading,
     error,
     reload: load,

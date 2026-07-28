@@ -25,7 +25,9 @@ function accountMatchesSearch(
     account.name,
     account.number,
     account.description,
-    getAccountCategoryName(account.accountCategoryId),
+    account.accountCategoryName ??
+      getAccountCategoryName(account.accountCategoryId),
+    account.accountSubCategoryName,
     account.phone,
     account.email,
     account.notes,

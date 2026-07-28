@@ -92,22 +92,30 @@ import { paymentsApi } from "@/features/payments/api/paymentsApi";
 import type { BudgetPaymentStatusResponse } from "@/features/payments/types/payment";
 import { paymentSourcesApi } from "@/features/payments/api/paymentSourcesApi";
 import { ApiError } from "@/lib/api/client";
-import { formatCurrency, formatCurrencyDetailed } from "@/lib/format";
+import {
+  formatCurrency,
+  formatCurrencyDetailed,
+  parseMoneyInput,
+  parseMoneyInputOrZero,
+} from "@/lib/format";
 
 import "@/features/accounts/components/account-grid.css";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 function parseNumber(value: unknown): number {
-  if (value === "" || value === null || value === undefined) return 0;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
+  return parseMoneyInputOrZero(value);
 }
 
 function parseOptionalNumber(value: unknown): number | null {
   if (value === "" || value === null || value === undefined) return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
+}
+
+function parseOptionalMoney(value: unknown): number | null {
+  if (value === "" || value === null || value === undefined) return null;
+  return parseMoneyInput(value);
 }
 
 function parseOptionalInteger(value: unknown): number | null {
@@ -1006,7 +1014,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
             ? ""
             : formatCurrencyDetailed(Number(p.value)),
         valueParser: (p: ValueParserParams) =>
-          parseOptionalNumber(p.newValue),
+          parseOptionalMoney(p.newValue),
       },
       {
         colId: "paymentSourceId",

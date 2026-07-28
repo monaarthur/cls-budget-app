@@ -9,7 +9,11 @@ import type {
 } from "@/features/credit-cards/payoff/types";
 import { useCreditCards } from "@/features/accounts/hooks/useCreditCards";
 import { ApiError } from "@/lib/api/client";
-import { formatCurrencyDetailed } from "@/lib/format";
+import {
+  formatCurrencyDetailed,
+  parseMoneyInput,
+  sanitizeMoneyInput,
+} from "@/lib/format";
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
@@ -112,12 +116,12 @@ export function ActivePayoffPlanPanel() {
   async function handleRecordPayment(event: FormEvent) {
     event.preventDefault();
     const accountId = Number(paymentAccountId);
-    const amount = Number(paymentAmount);
+    const amount = parseMoneyInput(paymentAmount);
     if (!Number.isFinite(accountId) || accountId <= 0) {
       setStatus("Select a credit card.");
       return;
     }
-    if (!Number.isFinite(amount) || amount <= 0) {
+    if (amount === null || amount <= 0) {
       setStatus("Enter a payment amount greater than zero.");
       return;
     }
@@ -176,13 +180,13 @@ export function ActivePayoffPlanPanel() {
   async function handleRevise(event: FormEvent) {
     event.preventDefault();
     if (!plan) return;
-    const monthly = Number(reviseMonthly);
-    const extra = Number(reviseExtra);
+    const monthly = parseMoneyInput(reviseMonthly);
+    const extra = parseMoneyInput(reviseExtra) ?? 0;
     if (!reviseName.trim()) {
       setStatus("Enter a plan name.");
       return;
     }
-    if (!Number.isFinite(monthly) || monthly <= 0) {
+    if (monthly === null || monthly <= 0) {
       setStatus("Enter a monthly debt payment greater than zero.");
       return;
     }
@@ -194,7 +198,7 @@ export function ActivePayoffPlanPanel() {
         name: reviseName.trim(),
         goal: plan.goal,
         strategy: reviseStrategy,
-        extraMonthlyPayment: Number.isFinite(extra) ? Math.max(0, extra) : 0,
+        extraMonthlyPayment: Math.max(0, extra),
         totalMonthlyDebtPayment: monthly,
         targetUtilizationPercent: plan.targetUtilizationPercent,
         payOverLimitFirst: plan.payOverLimitFirst,
@@ -435,11 +439,10 @@ export function ActivePayoffPlanPanel() {
                 Monthly debt payment
               </span>
               <input
-                type="number"
-                min="0"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 value={reviseMonthly}
-                onChange={(e) => setReviseMonthly(e.target.value)}
+                onChange={(e) => setReviseMonthly(sanitizeMoneyInput(e.target.value))}
                 className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
               />
             </label>
@@ -448,11 +451,10 @@ export function ActivePayoffPlanPanel() {
                 Extra monthly payment
               </span>
               <input
-                type="number"
-                min="0"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 value={reviseExtra}
-                onChange={(e) => setReviseExtra(e.target.value)}
+                onChange={(e) => setReviseExtra(sanitizeMoneyInput(e.target.value))}
                 className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
               />
             </label>
@@ -516,11 +518,10 @@ export function ActivePayoffPlanPanel() {
               Amount
             </span>
             <input
-              type="number"
-              min="0"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
               value={paymentAmount}
-              onChange={(e) => setPaymentAmount(e.target.value)}
+              onChange={(e) => setPaymentAmount(sanitizeMoneyInput(e.target.value))}
               className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
             />
           </label>

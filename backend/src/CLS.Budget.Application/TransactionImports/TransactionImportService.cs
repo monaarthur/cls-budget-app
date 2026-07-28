@@ -54,7 +54,7 @@ public sealed class TransactionImportService(
             return ApiResponse<TransactionImportDetailResponse>.Fail(ex.Message);
         }
 
-        var categories = await accountCategoryRepository.GetAllAsync(cancellationToken);
+        var categories = await accountCategoryRepository.GetAllForTenantAsync(cancellationToken);
         var categoryLookup = categories.ToDictionary(
             c => c.Name,
             c => c.AccountCategoryId,

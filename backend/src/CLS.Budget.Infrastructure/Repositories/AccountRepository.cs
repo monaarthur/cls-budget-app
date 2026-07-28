@@ -11,6 +11,8 @@ public sealed class AccountRepository(BudgetDbContext dbContext) : IAccountRepos
         await dbContext.Accounts
             .AsNoTracking()
             .Include(a => a.CreditCardDetail)
+            .Include(a => a.AccountCategory)
+            .Include(a => a.AccountSubCategory)
             .OrderBy(a => a.Name)
             .ToListAsync(cancellationToken);
 
@@ -20,6 +22,8 @@ public sealed class AccountRepository(BudgetDbContext dbContext) : IAccountRepos
         await dbContext.Accounts
             .AsNoTracking()
             .Include(a => a.CreditCardDetail)
+            .Include(a => a.AccountCategory)
+            .Include(a => a.AccountSubCategory)
             .Where(a => a.AccountCategoryId == accountCategoryId)
             .OrderBy(a => a.Name)
             .ToListAsync(cancellationToken);
@@ -27,6 +31,8 @@ public sealed class AccountRepository(BudgetDbContext dbContext) : IAccountRepos
     public async Task<Account?> GetByIdAsync(int accountId, CancellationToken cancellationToken = default) =>
         await dbContext.Accounts
             .Include(a => a.CreditCardDetail)
+            .Include(a => a.AccountCategory)
+            .Include(a => a.AccountSubCategory)
             .FirstOrDefaultAsync(a => a.AccountId == accountId, cancellationToken);
 
     public async Task<IReadOnlyList<Account>> GetByIdsAsync(
@@ -41,6 +47,8 @@ public sealed class AccountRepository(BudgetDbContext dbContext) : IAccountRepos
         return await dbContext.Accounts
             .AsNoTracking()
             .Include(a => a.CreditCardDetail)
+            .Include(a => a.AccountCategory)
+            .Include(a => a.AccountSubCategory)
             .Where(a => accountIds.Contains(a.AccountId))
             .ToListAsync(cancellationToken);
     }
@@ -51,6 +59,8 @@ public sealed class AccountRepository(BudgetDbContext dbContext) : IAccountRepos
         CancellationToken cancellationToken = default) =>
         await dbContext.Accounts
             .Include(a => a.CreditCardDetail)
+            .Include(a => a.AccountCategory)
+            .Include(a => a.AccountSubCategory)
             .FirstOrDefaultAsync(
                 a => a.AccountId == accountId && a.AccountCategoryId == accountCategoryId,
                 cancellationToken);

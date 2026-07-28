@@ -1,5 +1,6 @@
 using CLS.Budget.Application.Abstractions.Services;
 using CLS.Budget.Application.Accounts;
+using CLS.Budget.Application.AccountCategories;
 using CLS.Budget.Application.Accounts.Validators;
 using CLS.Budget.Application.Admin;
 using CLS.Budget.Application.Admin.Validators;
@@ -33,6 +34,7 @@ public static class DependencyInjection
         services.AddValidatorsFromAssemblyContaining<CreateAccountRequestValidator>();
 
         services.AddScoped<IAccountService, AccountService>();
+        services.AddScoped<IAccountCategoryService, AccountCategoryService>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IBudgetIncomeService, IncomeService>();
         services.AddScoped<IIncomeSourceService, IncomeSourceService>();

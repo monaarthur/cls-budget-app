@@ -10,9 +10,22 @@ namespace CLS.Budget.UnitTests.Accounts;
 public class AccountServiceTests
 {
     private readonly Mock<IAccountRepository> _repository = new();
+    private readonly Mock<IAccountCategoryRepository> _categoryRepository = new();
     private readonly AccountService _sut;
 
-    public AccountServiceTests() => _sut = new AccountService(_repository.Object);
+    public AccountServiceTests()
+    {
+        _categoryRepository
+            .Setup(r => r.GetByIdForTenantAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((int id, CancellationToken _) => new AccountCategory
+            {
+                AccountCategoryId = id,
+                Name = "Test",
+                IsSystem = true
+            });
+
+        _sut = new AccountService(_repository.Object, _categoryRepository.Object);
+    }
 
     [Fact]
     public async Task GetByIdAsync_ReturnsNotFound_WhenAccountMissing()
@@ -48,6 +61,20 @@ public class AccountServiceTests
             {
                 account.AccountId = 1;
                 return account;
+            });
+        _repository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((int id, CancellationToken _) => new Account
+            {
+                AccountId = id,
+                Name = "Checking",
+                Number = "CHK-001",
+                Balance = 100m,
+                Limit = 0m,
+                AccountOpenDate = DateTime.UtcNow,
+                Phone = "555-0100",
+                Email = "test@example.com",
+                Url = "https://bank.example.com",
+                AccountCategoryId = 1
             });
 
         var result = await _sut.CreateAsync(request);

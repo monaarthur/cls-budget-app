@@ -42,6 +42,11 @@ public class AccountsController(IAccountService accountService) : ControllerBase
         CancellationToken cancellationToken)
     {
         var result = await accountService.CreateAsync(request, cancellationToken);
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+
         return CreatedAtAction(
             nameof(GetById),
             new { id = result.Data!.AccountId },
@@ -51,6 +56,7 @@ public class AccountsController(IAccountService accountService) : ControllerBase
     [HttpPut("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<AccountResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<AccountResponse>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<AccountResponse>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Update(
         int id,
         [FromBody] UpdateAccountRequest request,
@@ -59,7 +65,9 @@ public class AccountsController(IAccountService accountService) : ControllerBase
         var result = await accountService.UpdateAsync(id, request, cancellationToken);
         if (!result.Success)
         {
-            return NotFound(result);
+            var notFound = result.Errors.Any(e =>
+                e.StartsWith($"Account with id {id}", StringComparison.Ordinal));
+            return notFound ? NotFound(result) : BadRequest(result);
         }
 
         return Ok(result);

@@ -91,7 +91,7 @@ public class AccountsControllerTests
     {
         var request = new UpdateAccountRequest { Name = "Updated" };
         _service.Setup(s => s.UpdateAsync(5, request, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResponse<AccountResponse>.Fail("Account 5 was not found."));
+            .ReturnsAsync(ApiResponse<AccountResponse>.Fail("Account with id 5 was not found."));
 
         var result = await _sut.Update(5, request, CancellationToken.None);
 

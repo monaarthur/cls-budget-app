@@ -5,7 +5,9 @@ using CLS.Budget.Application.Common;
 
 namespace CLS.Budget.Application.Accounts;
 
-public sealed class AccountService(IAccountRepository accountRepository) : IAccountService
+public sealed class AccountService(
+    IAccountRepository accountRepository,
+    IAccountCategoryRepository accountCategoryRepository) : IAccountService
 {
     public async Task<ApiResponse<IReadOnlyList<AccountResponse>>> GetAllAsync(
         CancellationToken cancellationToken = default)
@@ -32,9 +34,19 @@ public sealed class AccountService(IAccountRepository accountRepository) : IAcco
         CreateAccountRequest request,
         CancellationToken cancellationToken = default)
     {
+        var categoryError = await ValidateCategoryAsync(
+            request.AccountCategoryId,
+            request.AccountSubCategoryId,
+            cancellationToken);
+        if (categoryError is not null)
+        {
+            return ApiResponse<AccountResponse>.Fail(categoryError);
+        }
+
         var account = AccountMapper.ToEntity(request);
         var created = await accountRepository.AddAsync(account, cancellationToken);
-        return ApiResponse<AccountResponse>.Ok(AccountMapper.ToResponse(created));
+        var reloaded = await accountRepository.GetByIdAsync(created.AccountId, cancellationToken);
+        return ApiResponse<AccountResponse>.Ok(AccountMapper.ToResponse(reloaded ?? created));
     }
 
     public async Task<ApiResponse<AccountResponse>> UpdateAsync(
@@ -48,9 +60,19 @@ public sealed class AccountService(IAccountRepository accountRepository) : IAcco
             return ApiResponse<AccountResponse>.Fail($"Account with id {accountId} was not found.");
         }
 
+        var categoryError = await ValidateCategoryAsync(
+            request.AccountCategoryId,
+            request.AccountSubCategoryId,
+            cancellationToken);
+        if (categoryError is not null)
+        {
+            return ApiResponse<AccountResponse>.Fail(categoryError);
+        }
+
         AccountMapper.ApplyUpdate(account, request);
         await accountRepository.UpdateAsync(account, cancellationToken);
-        return ApiResponse<AccountResponse>.Ok(AccountMapper.ToResponse(account));
+        var reloaded = await accountRepository.GetByIdAsync(accountId, cancellationToken);
+        return ApiResponse<AccountResponse>.Ok(AccountMapper.ToResponse(reloaded ?? account));
     }
 
     public async Task<ApiResponse<object>> DeleteAsync(
@@ -65,5 +87,39 @@ public sealed class AccountService(IAccountRepository accountRepository) : IAcco
 
         await accountRepository.DeleteAsync(account, cancellationToken);
         return ApiResponse<object>.Ok(new { });
+    }
+
+    private async Task<string?> ValidateCategoryAsync(
+        int accountCategoryId,
+        int? accountSubCategoryId,
+        CancellationToken cancellationToken)
+    {
+        var category = await accountCategoryRepository.GetByIdForTenantAsync(
+            accountCategoryId,
+            cancellationToken);
+        if (category is null)
+        {
+            return "Account category was not found.";
+        }
+
+        if (!accountSubCategoryId.HasValue)
+        {
+            return null;
+        }
+
+        var subCategory = await accountCategoryRepository.GetSubCategoryByIdAsync(
+            accountSubCategoryId.Value,
+            cancellationToken);
+        if (subCategory is null)
+        {
+            return "Account subcategory was not found.";
+        }
+
+        if (subCategory.AccountCategoryId != accountCategoryId)
+        {
+            return "Subcategory does not belong to the selected category.";
+        }
+
+        return null;
     }
 }

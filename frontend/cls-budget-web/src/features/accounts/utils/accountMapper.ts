@@ -15,6 +15,8 @@ export function toUpdateAccountRequest(row: AccountGridRow): UpdateAccountReques
     accountOpenDate: row.accountOpenDate,
     monthlyPayment: row.monthlyPayment,
     paymentDay: row.paymentDay,
+    gracePeriod: row.gracePeriod ?? null,
+    graceDay: row.graceDay ?? null,
     phone: row.phone,
     email: row.email,
     url: row.url,
@@ -24,6 +26,7 @@ export function toUpdateAccountRequest(row: AccountGridRow): UpdateAccountReques
     paidOffDate: row.paidOffDate,
     isCreditCard: row.isCreditCard,
     accountCategoryId: row.accountCategoryId,
+    accountSubCategoryId: row.accountSubCategoryId ?? null,
     interestRate: row.interestRate,
     promotionalAnnualPercentageRate: row.promotionalAnnualPercentageRate,
     promotionalRateExpirationDate: row.promotionalRateExpirationDate,
@@ -154,6 +157,22 @@ export function formatPaymentDay(value: unknown): string {
   const day = Number(value);
   if (!Number.isFinite(day)) return "";
   return String(day).padStart(2, "0");
+}
+
+/** Day of month when grace ends: paymentDay + gracePeriod, wrapped into 1–31. */
+export function calculateGraceDay(
+  paymentDay: number | null | undefined,
+  gracePeriod: number | null | undefined,
+): number | null {
+  if (
+    paymentDay == null ||
+    gracePeriod == null ||
+    !Number.isFinite(paymentDay) ||
+    !Number.isFinite(gracePeriod)
+  ) {
+    return null;
+  }
+  return ((paymentDay - 1 + gracePeriod) % 31) + 1;
 }
 
 export function isCreditCardAccount(

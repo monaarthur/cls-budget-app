@@ -31,43 +31,57 @@ public static class LookupDataSeed
         {
             AccountCategoryId = 1,
             Name = "Credit Card",
-            Description = "Revolving credit accounts"
+            Description = "Revolving credit accounts",
+            IsSystem = true,
+            TenantId = null
         },
         new AccountCategory
         {
             AccountCategoryId = 2,
             Name = "Loan",
-            Description = "Installment loans"
+            Description = "Installment loans",
+            IsSystem = true,
+            TenantId = null
         },
         new AccountCategory
         {
             AccountCategoryId = 3,
             Name = "Mortgage",
-            Description = "Home mortgage accounts"
+            Description = "Home mortgage accounts",
+            IsSystem = true,
+            TenantId = null
         },
         new AccountCategory
         {
             AccountCategoryId = 4,
             Name = "Utility",
-            Description = "Utility and service bills"
+            Description = "Utility and service bills",
+            IsSystem = true,
+            TenantId = null
         },
         new AccountCategory
         {
             AccountCategoryId = 5,
             Name = "Subscription",
-            Description = "Recurring subscriptions"
+            Description = "Recurring subscriptions",
+            IsSystem = true,
+            TenantId = null
         },
         new AccountCategory
         {
             AccountCategoryId = 6,
             Name = "Savings",
-            Description = "Savings accounts"
+            Description = "Savings accounts",
+            IsSystem = true,
+            TenantId = null
         },
         new AccountCategory
         {
             AccountCategoryId = 7,
             Name = "Checking",
-            Description = "Checking accounts"
+            Description = "Checking accounts",
+            IsSystem = true,
+            TenantId = null
         }
     ];
 

@@ -44,12 +44,15 @@ export function DashboardHome() {
     totalBalance,
     monthlyPayments,
     upcomingPayments,
+    ytdSpendingByCategory,
     loading,
     error,
     reload,
   } = useDashboardSummary();
 
   const preview = accounts.slice(0, 4);
+  const ytdRows = ytdSpendingByCategory.rows;
+  const ytdMax = ytdRows[0]?.totalPaid ?? 0;
 
   return (
     <div className="space-y-6">
@@ -111,6 +114,62 @@ export function DashboardHome() {
           </button>
         </Card>
       ) : null}
+
+      <section>
+        <SectionTitle
+          title={`${ytdSpendingByCategory.year} spending by category`}
+          action={
+            <span className="text-xs font-medium tabular-nums text-[var(--muted)]">
+              {loading
+                ? "…"
+                : `${formatCurrency(ytdSpendingByCategory.totalPaid)} YTD`}
+            </span>
+          }
+        />
+        {loading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-14 animate-pulse rounded-2xl bg-[var(--card)]" />
+            ))}
+          </div>
+        ) : ytdRows.length === 0 ? (
+          <Card className="p-6 text-center text-sm text-[var(--muted)]">
+            No paid amounts recorded for {ytdSpendingByCategory.year} yet.
+          </Card>
+        ) : (
+          <Card className="space-y-4 p-4">
+            {ytdRows.map((row) => {
+              const widthPct =
+                ytdMax > 0 ? Math.max(4, (row.totalPaid / ytdMax) * 100) : 0;
+              return (
+                <div key={row.accountCategoryId || row.categoryName}>
+                  <div className="mb-1.5 flex items-baseline justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">
+                        {row.categoryName}
+                      </p>
+                      <p className="text-xs text-[var(--muted)]">
+                        {row.paymentCount} payment
+                        {row.paymentCount === 1 ? "" : "s"} ·{" "}
+                        {Math.round(row.shareOfTotal * 100)}% of YTD
+                      </p>
+                    </div>
+                    <p className="shrink-0 text-sm font-semibold tabular-nums">
+                      {formatCurrencyDetailed(row.totalPaid)}
+                    </p>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-black/[0.06]">
+                    <div
+                      className="h-full rounded-full bg-[var(--accent)]"
+                      style={{ width: `${widthPct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </Card>
+        )}
+      </section>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {quickLinks.map(({ href, label, description, icon: Icon }) => (

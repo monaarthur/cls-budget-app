@@ -17,12 +17,18 @@ public sealed class UpdateAccountRequestValidator : AbstractValidator<UpdateAcco
         RuleFor(x => x.Password).MaximumLength(500);
         RuleFor(x => x.Notes).MaximumLength(4000);
         RuleFor(x => x.AccountCategoryId).GreaterThan(0);
+        RuleFor(x => x.AccountSubCategoryId)
+            .GreaterThan(0)
+            .When(x => x.AccountSubCategoryId.HasValue);
         RuleFor(x => x.MonthlyPayment)
             .GreaterThanOrEqualTo(0)
             .When(x => x.MonthlyPayment.HasValue);
         RuleFor(x => x.PaymentDay)
             .InclusiveBetween(1, 31)
             .When(x => x.PaymentDay.HasValue);
+        RuleFor(x => x.GracePeriod)
+            .InclusiveBetween(0, 365)
+            .When(x => x.GracePeriod.HasValue);
         RuleFor(x => x.InterestRate)
             .GreaterThanOrEqualTo(0)
             .When(x => x.InterestRate.HasValue);

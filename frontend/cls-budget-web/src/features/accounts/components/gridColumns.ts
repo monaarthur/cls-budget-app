@@ -8,7 +8,10 @@ export const GRID_COLUMNS = [
   { colId: "cashAdvanceFeePercentage", label: "Cash advance fee %" },
   { colId: "monthlyPayment", label: "Monthly" },
   { colId: "paymentDay", label: "Payment day" },
+  { colId: "gracePeriod", label: "Grace" },
+  { colId: "graceDay", label: "Grace day" },
   { colId: "accountCategoryName", label: "Category" },
+  { colId: "accountSubCategoryName", label: "Subcategory" },
   { colId: "excludeFromPayoff", label: "Exclude payoff" },
   { colId: "isPaidOff", label: "Paid off" },
   { colId: "accountOpenDate", label: "Opened" },
@@ -35,6 +38,7 @@ export const DEFAULT_HIDDEN_COLUMNS = new Set([
 /** Not shown on credit card pages (grid or column picker). */
 export const CREDIT_CARD_EXCLUDED_COLUMNS = new Set([
   "accountCategoryName",
+  "accountSubCategoryName",
   "accountOpenDate",
 ]);
 
