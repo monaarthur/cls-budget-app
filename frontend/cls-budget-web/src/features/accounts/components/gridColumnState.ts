@@ -8,8 +8,8 @@ import {
 
 const ACCOUNTS_GRID_NAMESPACE = "accounts-grid";
 const CREDIT_CARD_GRID_NAMESPACE = "credit-cards-grid";
-const ACCOUNTS_STORAGE_VERSION = 2;
-const CREDIT_CARD_STORAGE_VERSION = 8;
+const ACCOUNTS_STORAGE_VERSION = 3;
+const CREDIT_CARD_STORAGE_VERSION = 9;
 
 function storageKeys(namespace: string) {
   return {
@@ -138,7 +138,16 @@ export function restoreColumnState(
   const state = saved.filter((column) => existing.has(column.colId));
   if (state.length === 0) return false;
 
-  api.applyColumnState({ state, applyOrder: true });
+  const savedIds = new Set(state.map((column) => column.colId));
+  const defaultHidden = defaultHiddenColumns(namespace);
+  const missingVisible = [...existing]
+    .filter((colId) => !savedIds.has(colId) && !defaultHidden.has(colId))
+    .map((colId) => ({ colId, hide: false }));
+
+  api.applyColumnState({
+    state: [...state, ...missingVisible],
+    applyOrder: true,
+  });
   return true;
 }
 
