@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { AppLink as Link, appHref } from "@/components/AppLink";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/features/auth/hooks/useAuth";
@@ -26,7 +26,7 @@ export function LoginForm() {
     try {
       await login({ email: email.trim(), password });
       const returnUrl = searchParams.get("returnUrl") ?? "/";
-      router.replace(returnUrl);
+      router.replace(appHref(returnUrl));
     } catch (err) {
       const message =
         err instanceof ApiError

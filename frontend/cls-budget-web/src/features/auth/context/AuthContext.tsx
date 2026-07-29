@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
+import { appHref } from "@/components/AppLink";
 import { authApi } from "@/features/auth/api/authApi";
 import { refreshSession } from "@/features/auth/lib/authCookies";
 import { AUTH_ENABLED } from "@/features/auth/lib/authConfig";
@@ -127,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await clearAuthSession();
     setUser(null);
     if (AUTH_ENABLED) {
-      router.push("/login");
+      router.push(appHref("/login"));
     }
   }, [router]);
 

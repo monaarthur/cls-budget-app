@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { Card } from "@/components/ui/Card";
 import { cashFlowApi } from "@/features/credit-cards/cash-flow/api/cashFlowApi";
 import type {

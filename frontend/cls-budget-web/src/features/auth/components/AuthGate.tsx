@@ -7,6 +7,7 @@ import {
   isAuthPublicPath,
   resolvePathname,
 } from "@/features/auth/lib/authConfig";
+import { appHref } from "@/components/AppLink";
 
 /**
  * Client-side guard when auth is enabled. Middleware handles the cookie check;
@@ -26,7 +27,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     if (!path || isAuthPublicPath(path)) return;
 
     const returnUrl = encodeURIComponent(path);
-    router.replace(`/login?returnUrl=${returnUrl}`);
+    router.replace(appHref(`/login?returnUrl=${returnUrl}`));
   }, [authEnabled, isLoading, isAuthenticated, pathname, router]);
 
   if (isPublic) {

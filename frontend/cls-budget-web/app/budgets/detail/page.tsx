@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { BudgetGrid } from "@/features/budgets/components/BudgetGrid";

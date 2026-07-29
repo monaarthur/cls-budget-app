@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { TopBar } from "@/components/layout/TopBar";
 import { AccountList } from "@/features/accounts/components/AccountList";
 import { AccountSearchField } from "@/features/accounts/components/AccountSearchField";

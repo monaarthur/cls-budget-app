@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { appHref } from "@/components/AppLink";
 import { budgetsApi } from "@/features/budgets/api/budgetsApi";
 import { budgetTemplatesApi } from "@/features/budgets/api/budgetTemplatesApi";
 import {
@@ -89,7 +90,7 @@ export function AddBudgetForm({ onCreated }: { onCreated: (name: string) => void
       }
 
       onCreated(trimmedName);
-      router.push(`/budgets/detail?id=${created.budgetId}`);
+      router.push(appHref(`/budgets/detail?id=${created.budgetId}`));
     } catch (err) {
       const message =
         err instanceof ApiError

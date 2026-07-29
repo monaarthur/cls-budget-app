@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { AppLink as Link, appHref } from "@/components/AppLink";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { authApi } from "@/features/auth/api/authApi";
@@ -35,7 +35,9 @@ export function ResetPasswordForm() {
     setSubmitting(true);
     try {
       await authApi.resetPassword({ token, newPassword: password });
-      router.replace(isInvite ? "/login?welcome=1" : "/login?reset=1");
+      router.replace(
+        appHref(isInvite ? "/login?welcome=1" : "/login?reset=1"),
+      );
     } catch (err) {
       const message =
         err instanceof ApiError

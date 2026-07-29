@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, Fragment, type FormEvent } from "react";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { ChevronDown, CheckCircle2, CreditCard, Gauge, Wallet } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";

@@ -1,6 +1,6 @@
 import { AccountGrid } from "@/features/accounts/components/AccountGrid";
 import { TopBar } from "@/components/layout/TopBar";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 
 export default function AccountsGridPage() {
   return (

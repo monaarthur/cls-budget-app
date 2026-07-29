@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { TopBar } from "@/components/layout/TopBar";
 import { ActivePayoffPlanPanel } from "@/features/credit-cards/payoff/components/ActivePayoffPlanPanel";
 

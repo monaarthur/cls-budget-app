@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { Card } from "@/components/ui/Card";
 import { forecastApi } from "@/features/credit-cards/forecast/api/forecastApi";
 import type {

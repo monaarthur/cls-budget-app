@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { TopBar } from "@/components/layout/TopBar";
 import { CreditCardCalculatorHub } from "@/features/credit-cards/calculators/components/CreditCardCalculatorHub";
 

@@ -1,6 +1,6 @@
 import { CreditCardGrid } from "@/features/accounts/components/CreditCardGrid";
 import { TopBar } from "@/components/layout/TopBar";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 
 export default function CreditCardsGridPage() {
   return (

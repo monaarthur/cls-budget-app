@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { ChevronRight } from "lucide-react";
 import { AccountAvatar } from "@/components/ui/AccountAvatar";
 import { formatCurrency } from "@/lib/format";

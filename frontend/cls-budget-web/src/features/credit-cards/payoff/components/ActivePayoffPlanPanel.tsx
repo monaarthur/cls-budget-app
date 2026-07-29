@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { activePayoffPlanApi } from "@/features/credit-cards/payoff/api/activePayoffPlanApi";
 import type {

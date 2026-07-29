@@ -1,6 +1,6 @@
 import { CreditCardList } from "@/features/accounts/components/CreditCardList";
 import { TopBar } from "@/components/layout/TopBar";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 
 export default function CreditCardsPage() {
   return (
