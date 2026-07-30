@@ -23,7 +23,8 @@ jobs:
     env:
       NEXT_OUTPUT: export
       NEXT_PUBLIC_AUTH_ENABLED: "true"
-      NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
+      # Public client URL (CloudFront → EC2 /api/*). Secret override optional.
+      NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL || 'https://d12onqucnncuke.cloudfront.net' }}
 
     steps:
       - name: Checkout repo
@@ -32,9 +33,10 @@ jobs:
       - name: Validate build configuration
         run: |
           if [ -z "$NEXT_PUBLIC_API_BASE_URL" ]; then
-            echo "::error::Set GitHub secret NEXT_PUBLIC_API_BASE_URL to your Render API URL (e.g. https://cls-budget-api.onrender.com)."
+            echo "::error::NEXT_PUBLIC_API_BASE_URL is empty."
             exit 1
           fi
+          echo "API base URL: $NEXT_PUBLIC_API_BASE_URL"
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -73,12 +75,8 @@ jobs:
 
       - name: Invalidate CloudFront cache
         env:
-          CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID || 'E39ZGQHXGCF905' }}
         run: |
-          if [ -z "$CLOUDFRONT_DISTRIBUTION_ID" ]; then
-            echo "Skipping CloudFront invalidation (CLOUDFRONT_DISTRIBUTION_ID not set)."
-            exit 0
-          fi
           aws cloudfront create-invalidation \
             --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
             --paths "/*"
