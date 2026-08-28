@@ -16,6 +16,7 @@ import {
   type ValueSetterParams,
 } from "ag-grid-community";
 import { RefreshCw, RotateCcw, Save, Search, Tags } from "lucide-react";
+import { AccountExportButtons } from "@/features/accounts/components/AccountExportButtons";
 import { accountsApi } from "@/features/accounts/api/accountsApi";
 import { AddCategoryDialog } from "@/features/accounts/components/AddCategoryDialog";
 import {
@@ -191,6 +192,17 @@ export function AccountGrid({ creditCardOnly = false }: AccountGridProps) {
       totalLimit: rowData.reduce((sum, account) => sum + account.limit, 0),
     };
   }, [rowData, summaryTick]);
+
+  const exportRows = useMemo(() => {
+    if (!gridApi) return rowData;
+    const rows: AccountGridRow[] = [];
+    gridApi.forEachNodeAfterFilterAndSort((node) => {
+      if (node.data && !isPinnedTotalRow(node)) {
+        rows.push(node.data);
+      }
+    });
+    return rows;
+  }, [gridApi, rowData, filterRevision, quickFilter]);
 
   const columnDefs = useMemo<ColDef<AccountGridRow>[]>(() => {
     const defs: ColDef<AccountGridRow>[] = [
@@ -766,6 +778,10 @@ export function AccountGrid({ creditCardOnly = false }: AccountGridProps) {
                 Categories
               </button>
             ) : null}
+            <AccountExportButtons
+              accounts={exportRows}
+              creditCardOnly={creditCardOnly}
+            />
             <ColumnPicker
               gridApi={gridApi}
               columnStateNamespace={columnStateNamespace}

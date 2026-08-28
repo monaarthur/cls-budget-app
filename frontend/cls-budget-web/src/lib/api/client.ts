@@ -1,3 +1,4 @@
+import { appHref } from "@/components/AppLink";
 import { AUTH_ENABLED } from "@/features/auth/lib/authConfig";
 import { refreshSession } from "@/features/auth/lib/authCookies";
 import {
@@ -20,13 +21,17 @@ export class ApiError extends Error {
 
 function getBaseUrl(): string {
   const configured = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "");
-  if (configured) {
+
+  // Prefer same-origin relative URLs in the browser (CloudFront serves UI + /api/*).
+  if (typeof window !== "undefined") {
+    if (!configured || configured === window.location.origin) {
+      return "";
+    }
     return configured;
   }
 
-  // Local dev: browser requests go through the Next.js proxy (same origin, no CORS).
-  if (typeof window !== "undefined") {
-    return "";
+  if (configured) {
+    return configured;
   }
 
   return "http://localhost:5123";
@@ -90,6 +95,7 @@ async function request<T>(
   try {
     res = await fetch(`${getBaseUrl()}${path}`, {
       cache: "no-store",
+      signal: AbortSignal.timeout(20_000),
       ...init,
       headers: authHeaders(init),
     });
@@ -111,7 +117,7 @@ async function request<T>(
     await clearAuthSession();
     if (typeof window !== "undefined") {
       const returnUrl = encodeURIComponent(window.location.pathname);
-      window.location.href = `/login?returnUrl=${returnUrl}`;
+      window.location.href = appHref(`/login?returnUrl=${returnUrl}`);
     }
     throw new ApiError(401, "Session expired. Please sign in again.");
   }

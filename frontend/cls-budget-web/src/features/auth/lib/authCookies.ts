@@ -9,6 +9,7 @@ function apiBaseUrl(): string {
 
 function maxAgeSeconds(isoExpiry: string): number {
   const ms = new Date(isoExpiry).getTime() - Date.now();
+  if (Number.isNaN(ms)) return 60;
   return Math.max(60, Math.floor(ms / 1000));
 }
 
@@ -31,59 +32,86 @@ function writeCookie(name: string, value: string, maxAge: number): void {
 
 function clearCookie(name: string): void {
   if (typeof document === "undefined") return;
-  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
+  // Must match Secure flag used when writing, or browsers keep the old cookie.
+  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax${secureCookieSuffix()}`;
+  if (secureCookieSuffix()) {
+    document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
+  }
 }
 
 async function refreshViaNextRoute(): Promise<AuthResponse | null> {
-  const res = await fetch("/api/auth/refresh", { method: "POST" });
-  if (!res.ok) return null;
+  try {
+    const res = await fetch("/api/auth/refresh", {
+      method: "POST",
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!res.ok) return null;
 
-  const body = (await res.json()) as {
-    success: boolean;
-    data: AuthResponse | null;
-  };
+    const body = (await res.json()) as {
+      success: boolean;
+      data: AuthResponse | null;
+    };
 
-  return body.success && body.data ? body.data : null;
+    return body.success && body.data ? body.data : null;
+  } catch {
+    return null;
+  }
+}
+
+function backendOrigin(): string {
+  const configured = apiBaseUrl();
+  if (typeof window !== "undefined") {
+    // Same-origin relative calls avoid CloudFront absolute-URL edge cases.
+    if (!configured || configured === window.location.origin) {
+      return "";
+    }
+  }
+  return configured;
 }
 
 async function refreshViaBackendApi(): Promise<AuthResponse | null> {
   const refreshToken = readCookie(REFRESH_COOKIE);
   if (!refreshToken) return null;
 
-  const backendRes = await fetch(`${apiBaseUrl()}/api/v1/auth/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken }),
-    cache: "no-store",
-  });
+  try {
+    const backendRes = await fetch(`${backendOrigin()}/api/v1/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(12_000),
+    });
 
-  const text = await backendRes.text();
-  if (!text) return null;
+    const text = await backendRes.text();
+    if (!text) return null;
 
-  const body = JSON.parse(text) as {
-    success: boolean;
-    data: AuthResponse | null;
-    errors: string[];
-  };
+    const body = JSON.parse(text) as {
+      success: boolean;
+      data: AuthResponse | null;
+      errors: string[];
+    };
 
-  if (!backendRes.ok || !body.success || !body.data) {
-    clearCookie(REFRESH_COOKIE);
-    clearCookie(ACCESS_COOKIE);
+    if (!backendRes.ok || !body.success || !body.data) {
+      clearCookie(REFRESH_COOKIE);
+      clearCookie(ACCESS_COOKIE);
+      return null;
+    }
+
+    writeCookie(
+      REFRESH_COOKIE,
+      body.data.refreshToken,
+      maxAgeSeconds(body.data.refreshTokenExpiresAt),
+    );
+    writeCookie(
+      ACCESS_COOKIE,
+      body.data.accessToken,
+      maxAgeSeconds(body.data.accessTokenExpiresAt),
+    );
+
+    return body.data;
+  } catch {
     return null;
   }
-
-  writeCookie(
-    REFRESH_COOKIE,
-    body.data.refreshToken,
-    maxAgeSeconds(body.data.refreshTokenExpiresAt),
-  );
-  writeCookie(
-    ACCESS_COOKIE,
-    body.data.accessToken,
-    maxAgeSeconds(body.data.accessTokenExpiresAt),
-  );
-
-  return body.data;
 }
 
 /** Persists the refresh token cookie for session refresh. */
@@ -120,7 +148,9 @@ export async function clearAuthCookies(): Promise<void> {
 
 /** Refresh session using the backend API or local Next.js route in dev. */
 export async function refreshSession(): Promise<AuthResponse | null> {
-  if (typeof window !== "undefined" && apiBaseUrl()) {
+  // Static export has no Next `/api/auth/*` routes — always refresh via the API
+  // in the browser. The Next route is only available during `next dev`.
+  if (typeof window !== "undefined") {
     return refreshViaBackendApi();
   }
 

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useAccounts } from "@/features/accounts/hooks/useAccounts";
 import { useCreditCards } from "@/features/accounts/hooks/useCreditCards";
 import { getAccountCategoryName } from "@/features/accounts/data/accountCategories";
+import { AccountExportButtons } from "@/features/accounts/components/AccountExportButtons";
 import { AddAccountDialog } from "@/features/accounts/components/AddAccountDialog";
 import { AccountRow } from "@/components/ui/AccountRow";
 import { CreditCardRow } from "@/components/ui/CreditCardRow";
@@ -168,7 +169,12 @@ export function AccountList({
         <SectionTitle
           title={sectionTitle}
           action={
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <AccountExportButtons
+                accounts={displayAccounts}
+                creditCardOnly={creditCardOnly}
+                compact
+              />
               <button
                 type="button"
                 onClick={() => setAddOpen(true)}

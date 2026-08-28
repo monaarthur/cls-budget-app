@@ -34,7 +34,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  if (!resolvedPath || (authEnabled && isLoading)) {
+  if (authEnabled && isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center p-12 text-sm text-[var(--muted)]">
         Loading…

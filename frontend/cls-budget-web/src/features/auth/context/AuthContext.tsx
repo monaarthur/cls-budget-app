@@ -18,7 +18,6 @@ import {
   clearAuthSession,
   getAccessToken,
   persistAuthSession,
-  persistAccessToken,
 } from "@/features/auth/lib/authStorage";
 import type {
   AuthResponse,
@@ -60,40 +59,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    let accessToken = getAccessToken();
-
-    if (!accessToken) {
-      const refreshed = await refreshSession();
-      if (refreshed) {
-        persistAccessToken(refreshed);
-        setUser(refreshed.user);
-        setIsLoading(false);
-        return;
-      }
-
-      setUser(null);
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      const result = await authApi.me(accessToken);
-      if (result.data) {
-        setUser(result.data);
-      } else {
-        await clearAuthSession();
-        setUser(null);
-      }
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
+      // Expired access tokens are treated as missing (see getAccessToken) so we
+      // refresh quietly instead of calling /auth/me and logging a 401.
+      const accessToken = getAccessToken();
+
+      if (!accessToken) {
         const refreshed = await refreshSession();
         if (refreshed) {
           await applyAuthResponse(refreshed, setUser);
-          setIsLoading(false);
           return;
         }
+
+        setUser(null);
+        return;
       }
-      await clearAuthSession();
+
+      try {
+        const result = await authApi.me(accessToken);
+        if (result.data) {
+          setUser(result.data);
+        } else {
+          await clearAuthSession();
+          setUser(null);
+        }
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          const refreshed = await refreshSession();
+          if (refreshed) {
+            await applyAuthResponse(refreshed, setUser);
+            return;
+          }
+        }
+        await clearAuthSession();
+        setUser(null);
+      }
+    } catch {
       setUser(null);
     } finally {
       setIsLoading(false);
