@@ -3,10 +3,6 @@ import { normalizeGridDateIso } from "@/features/accounts/utils/accountMapper";
 import { isPaymentDateSelected } from "@/features/budgets/utils/budgetPaymentSummary";
 import type { AccountResponse } from "@/features/accounts/types/account";
 import type { PaymentResponse, UpdatePaymentRequest } from "@/features/payments/types/payment";
-import {
-  getPaymentTiming,
-  getPaymentTimingRowClass,
-} from "@/features/payments/utils/paymentTiming";
 
 export interface BudgetGridRow extends PaymentResponse {
   accountName: string;
@@ -17,6 +13,7 @@ export interface BudgetGridRow extends PaymentResponse {
   accountPaymentDay: number | null;
   /** Account-level notes shared across all line items for this account. */
   accountNotes: string | null;
+  autoBudgetPending?: boolean;
 }
 
 export function buildBudgetGridRows(
@@ -197,8 +194,6 @@ export function toUpdatePaymentRequest(
 }
 
 export function getBudgetPaymentRowClass(row: BudgetGridRow): string {
-  const timingClass = getPaymentTimingRowClass(getPaymentTiming(row));
-  if (timingClass) return timingClass;
   return getBudgetStatusRowClass(row.budgetPaymentStatusName);
 }
 
@@ -207,6 +202,7 @@ export function getBudgetStatusRowClass(statusName: string): string {
     case "unassigned":
       return "budget-row-unassigned";
     case "pending":
+      return "budget-row-pending";
     case "scheduled":
     case "scheduled online":
       return "budget-row-scheduled";

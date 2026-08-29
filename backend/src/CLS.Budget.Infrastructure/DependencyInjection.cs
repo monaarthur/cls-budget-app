@@ -61,6 +61,7 @@ public static class DependencyInjection
         services.AddScoped<IForecastScenarioRepository, ForecastScenarioRepository>();
         services.AddScoped<ISavedPayoffPlanRepository, SavedPayoffPlanRepository>();
         services.AddScoped<IActivePayoffPlanRepository, ActivePayoffPlanRepository>();
+        services.AddScoped<IAutoPayoffConfigRepository, AutoPayoffConfigRepository>();
 
         // Authentication / identity
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));

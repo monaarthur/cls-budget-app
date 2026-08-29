@@ -9,6 +9,7 @@ import {
   CreditCard,
   Home,
   LayoutGrid,
+  Settings,
   Wallet,
   WalletCards,
 } from "lucide-react";
@@ -43,6 +44,12 @@ const navItems: readonly NavItem[] = [
   { href: "/payments", label: "Payments", icon: CreditCard },
   { href: "/transactions", label: "Transactions", icon: ArrowUpFromLine },
   { href: "/budgets", label: "Budgets", icon: LayoutGrid },
+  {
+    href: "/config",
+    label: "Config",
+    icon: Settings,
+    children: [{ href: "/config/auto-payoff", label: "Auto Budget" }],
+  },
 ];
 
 function isActivePath(pathname: string, href: string): boolean {

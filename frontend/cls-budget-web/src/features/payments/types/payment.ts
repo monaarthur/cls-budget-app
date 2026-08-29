@@ -42,3 +42,8 @@ export interface CreatePaymentRequest {
 }
 
 export type UpdatePaymentRequest = CreatePaymentRequest;
+
+export interface ResetBudgetPaymentStatusesResponse {
+  updatedCount: number;
+  budgetPaymentStatusId: number;
+}

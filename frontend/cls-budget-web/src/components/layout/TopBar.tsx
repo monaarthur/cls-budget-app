@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { SidebarToggle } from "@/components/layout/SidebarToggle";
 import { getGreeting } from "@/lib/format";
 
@@ -11,12 +11,18 @@ export function TopBar({
   title?: string;
   actions?: ReactNode;
 }) {
+  const [greeting, setGreeting] = useState("Welcome");
+
+  useEffect(() => {
+    setGreeting(getGreeting());
+  }, []);
+
   return (
     <header className="mb-6 flex items-center justify-between gap-3">
       <div className="flex min-w-0 items-start gap-3">
         <SidebarToggle className="mt-1" />
         <div className="min-w-0">
-          <p className="text-sm text-[var(--muted)]">{getGreeting()}</p>
+          <p className="text-sm text-[var(--muted)]">{greeting}</p>
           <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
             <h1 className="text-2xl font-bold tracking-tight">
               {title ?? "Overview"}

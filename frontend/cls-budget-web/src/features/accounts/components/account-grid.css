@@ -25,6 +25,48 @@
   gap: 8px;
 }
 
+.account-grid-autobudget {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(15, 39, 68, 0.08);
+  background: #f8fafc;
+}
+
+.account-grid-autobudget-title {
+  margin-right: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f2744;
+}
+
+.budget-autobudget-confirm {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  border: 0;
+  background: var(--accent, #0ea5a4);
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(15, 39, 68, 0.22);
+  cursor: pointer;
+}
+
+.budget-autobudget-confirm:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.budget-autobudget-confirm:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .account-grid-column-picker {
   position: relative;
 }
@@ -482,15 +524,7 @@
 }
 
 .account-grid-viewport .account-row-dirty {
-  background-color: #fffbeb !important;
-}
-
-.account-grid-viewport .account-row-dirty.ag-row-odd {
-  background-color: #fef9c3 !important;
-}
-
-.account-grid-viewport .account-row-dirty.ag-row-hover {
-  background-color: #fef08a !important;
+  box-shadow: inset 3px 0 0 #d97706;
 }
 
 .account-grid-viewport .account-grid-total-row {
@@ -505,7 +539,14 @@
 }
 
 /* Budget grid — payment status row colors */
+.account-grid-viewport [class*="budget-row-"] .ag-cell {
+  background-color: transparent !important;
+}
+
 .account-grid-viewport .budget-row-unassigned {
+  --ag-background-color: #f8fafc;
+  --ag-odd-row-background-color: #f1f5f9;
+  --ag-row-hover-color: #e2e8f0;
   background-color: #f8fafc !important;
 }
 
@@ -518,6 +559,9 @@
 }
 
 .account-grid-viewport .budget-row-pending {
+  --ag-background-color: #fef2f2;
+  --ag-odd-row-background-color: #fee2e2;
+  --ag-row-hover-color: #fecaca;
   background-color: #fef2f2 !important;
 }
 
@@ -530,6 +574,9 @@
 }
 
 .account-grid-viewport .budget-row-scheduled {
+  --ag-background-color: #fefce8;
+  --ag-odd-row-background-color: #fef9c3;
+  --ag-row-hover-color: #fef08a;
   background-color: #fefce8 !important;
 }
 
@@ -542,6 +589,9 @@
 }
 
 .account-grid-viewport .budget-row-paid {
+  --ag-background-color: #f0fdf4;
+  --ag-odd-row-background-color: #dcfce7;
+  --ag-row-hover-color: #bbf7d0;
   background-color: #f0fdf4 !important;
 }
 
@@ -554,6 +604,9 @@
 }
 
 .account-grid-viewport .budget-row-alert {
+  --ag-background-color: #fef2f2;
+  --ag-odd-row-background-color: #fee2e2;
+  --ag-row-hover-color: #fecaca;
   background-color: #fef2f2 !important;
 }
 
@@ -566,6 +619,9 @@
 }
 
 .account-grid-viewport .budget-row-overdue {
+  --ag-background-color: #fff1f2;
+  --ag-odd-row-background-color: #ffe4e6;
+  --ag-row-hover-color: #fecdd3;
   background-color: #fff1f2 !important;
 }
 
@@ -578,6 +634,9 @@
 }
 
 .account-grid-viewport .budget-row-due-soon {
+  --ag-background-color: #fffbeb;
+  --ag-odd-row-background-color: #fef3c7;
+  --ag-row-hover-color: #fde68a;
   background-color: #fffbeb !important;
 }
 

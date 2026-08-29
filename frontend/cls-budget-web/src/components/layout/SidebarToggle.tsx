@@ -1,6 +1,7 @@
 "use client";
 
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useSidebarNav } from "@/components/layout/SidebarNavContext";
 
 export function SidebarToggle({
@@ -9,6 +10,20 @@ export function SidebarToggle({
   className?: string;
 }) {
   const { open, toggle } = useSidebarNav();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    setReady(true);
+  }, []);
+
+  if (!ready) {
+    return (
+      <span
+        className={`hidden h-9 w-9 shrink-0 lg:inline-flex ${className}`}
+        aria-hidden
+      />
+    );
+  }
 
   return (
     <button

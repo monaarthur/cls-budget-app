@@ -79,6 +79,38 @@ public sealed class PaymentService(
         return ApiResponse<PaymentResponse>.Ok(PaymentMapper.ToResponse(updated!));
     }
 
+    public async Task<ApiResponse<ResetBudgetPaymentStatusesResponse>> ResetBudgetStatusesAsync(
+        int budgetId,
+        ResetBudgetPaymentStatusesRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var budget = await budgetRepository.GetByIdAsync(budgetId, cancellationToken);
+        if (budget is null)
+        {
+            return ApiResponse<ResetBudgetPaymentStatusesResponse>.Fail(
+                $"Budget with id {budgetId} was not found.");
+        }
+
+        var statusError = await ValidateBudgetPaymentStatusAsync(
+            request.BudgetPaymentStatusId,
+            cancellationToken);
+        if (statusError is not null)
+        {
+            return ApiResponse<ResetBudgetPaymentStatusesResponse>.Fail(statusError);
+        }
+
+        var updatedCount = await paymentRepository.ResetStatusForBudgetAsync(
+            budgetId,
+            request.BudgetPaymentStatusId,
+            cancellationToken);
+
+        return ApiResponse<ResetBudgetPaymentStatusesResponse>.Ok(new ResetBudgetPaymentStatusesResponse
+        {
+            UpdatedCount = updatedCount,
+            BudgetPaymentStatusId = request.BudgetPaymentStatusId,
+        });
+    }
+
     public async Task<ApiResponse<object>> DeleteAsync(
         int paymentId,
         CancellationToken cancellationToken = default)

@@ -15,5 +15,9 @@ public interface IPaymentRepository
         CancellationToken cancellationToken = default);
     Task<BudgetPayment> AddAsync(BudgetPayment payment, CancellationToken cancellationToken = default);
     Task UpdateAsync(BudgetPayment payment, CancellationToken cancellationToken = default);
+    Task<int> ResetStatusForBudgetAsync(
+        int budgetId,
+        int budgetPaymentStatusId,
+        CancellationToken cancellationToken = default);
     Task DeleteAsync(BudgetPayment payment, CancellationToken cancellationToken = default);
 }

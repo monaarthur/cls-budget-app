@@ -53,6 +53,18 @@ public sealed class PaymentRepository(BudgetDbContext dbContext) : IPaymentRepos
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<int> ResetStatusForBudgetAsync(
+        int budgetId,
+        int budgetPaymentStatusId,
+        CancellationToken cancellationToken = default) =>
+        await dbContext.BudgetPayments
+            .Where(p => p.BudgetId == budgetId)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(
+                    p => p.BudgetPaymentStatusId,
+                    budgetPaymentStatusId),
+                cancellationToken);
+
     public async Task DeleteAsync(BudgetPayment payment, CancellationToken cancellationToken = default)
     {
         dbContext.BudgetPayments.Remove(payment);

@@ -91,12 +91,15 @@ import type { IncomeSummaryResponse } from "@/features/incomes/types/income";
 import { paymentsApi } from "@/features/payments/api/paymentsApi";
 import type { BudgetPaymentStatusResponse } from "@/features/payments/types/payment";
 import { paymentSourcesApi } from "@/features/payments/api/paymentSourcesApi";
+import { autoPayoffApi } from "@/features/auto-payoff/api/autoPayoffApi";
+import type { AutoPayoffConfig } from "@/features/auto-payoff/types";
 import { ApiError } from "@/lib/api/client";
 import {
   formatCurrency,
   formatCurrencyDetailed,
   parseMoneyInput,
   parseMoneyInputOrZero,
+  sanitizeMoneyInput,
 } from "@/lib/format";
 
 import "@/features/accounts/components/account-grid.css";
@@ -167,10 +170,24 @@ interface BudgetGridContext {
   budgetAccountCount: number;
   accountMutating: boolean;
   paymentMutating: boolean;
+  autoBudgetPendingIds: number[];
+  autoBudgetConfirmingId: number | null;
   onRemoveAccount: (accountId: number, accountName: string) => void;
   onDeletePayment: (budgetPaymentId: number) => void;
   onAddPaymentForAccount: (accountId: number) => void;
   onOpenNotes: (row: BudgetGridRow) => void;
+  onConfirmAutoBudget: (budgetPaymentId: number) => void;
+}
+
+function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function namedAutoBudgets(configs: AutoPayoffConfig[]): AutoPayoffConfig[] {
+  return configs.filter(
+    (config) =>
+      (config.autoPayoffConfigId ?? 0) > 0 && config.name.trim().length > 0,
+  );
 }
 
 function PaymentHalfPanel({
@@ -252,6 +269,9 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const columnStateReadyRef = useRef(false);
   const [rowData, setRowData] = useState<BudgetGridRow[]>([]);
+  const rowDataRef = useRef<BudgetGridRow[]>([]);
+  rowDataRef.current = rowData;
+  const autoBudgetConfirmInFlightRef = useRef<number | null>(null);
   const [budgetName, setBudgetName] = useState("");
   const [budgetPeriod, setBudgetPeriod] = useState("");
   const [budgetStartPeriod, setBudgetStartPeriod] = useState("");
@@ -283,6 +303,17 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   const [paymentStatuses, setPaymentStatuses] = useState<
     BudgetPaymentStatusResponse[]
   >([]);
+  const [resetStatusId, setResetStatusId] = useState(0);
+  const [autoBudgets, setAutoBudgets] = useState<AutoPayoffConfig[]>([]);
+  const [autoBudgetAmount, setAutoBudgetAmount] = useState("");
+  const [autoBudgetConfigId, setAutoBudgetConfigId] = useState(0);
+  const [autoBudgeting, setAutoBudgeting] = useState(false);
+  const [autoBudgetPendingIds, setAutoBudgetPendingIds] = useState<number[]>(
+    [],
+  );
+  const [autoBudgetConfirmingId, setAutoBudgetConfirmingId] = useState<
+    number | null
+  >(null);
   const [allAccounts, setAllAccounts] = useState<AccountResponse[]>([]);
   const [addAccountOpen, setAddAccountOpen] = useState(false);
   const [addPaymentOpen, setAddPaymentOpen] = useState(false);
@@ -312,6 +343,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   const dateEditSnapshotRef = useRef<Map<string, string | null>>(new Map());
   const [dirtyRevision, setDirtyRevision] = useState(0);
   const [gridMode, setGridMode] = useState<BudgetGridMode | null>(null);
+  const [gridMounted, setGridMounted] = useState(false);
   const [status, setStatus] = useState<{
     type: "success" | "error";
     message: string;
@@ -343,6 +375,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         paySchedulesResult,
         incomeSourcesResult,
         incomeSummaryResult,
+        autoBudgetsResult,
       ] = await Promise.all([
         budgetsApi.getById(budgetId),
         paymentsApi.getAll(),
@@ -352,6 +385,7 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         paySchedulesApi.getAll().catch(() => null),
         incomeSourcesApi.getAll().catch(() => null),
         incomesApi.getSummaryByBudget(budgetId).catch(() => null),
+        autoPayoffApi.getAll().catch(() => null),
       ]);
 
       const budget = budgetResult.data;
@@ -377,6 +411,19 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       setStatusByName(
         new Map(statuses.map((s) => [s.name, s.budgetPaymentStatusId])),
       );
+      setResetStatusId((current) => {
+        if (statuses.some((status) => status.budgetPaymentStatusId === current)) {
+          return current;
+        }
+        const unassigned = statuses.find(
+          (status) => status.name.trim().toLowerCase() === "unassigned",
+        );
+        return (
+          unassigned?.budgetPaymentStatusId ??
+          statuses[0]?.budgetPaymentStatusId ??
+          0
+        );
+      });
 
       const sources = paymentSourcesResult?.data ?? [];
       setPaymentSourceNames(sources.map((source) => source.name));
@@ -419,8 +466,23 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       setRowData(buildBudgetGridRows(payments, accountsById));
       dirtyIds.current.clear();
       dirtyAccountIds.current.clear();
+      setAutoBudgetPendingIds([]);
       setPendingCount(0);
       setPayPeriodFilter(null);
+
+      const savedAutoBudgets = namedAutoBudgets(autoBudgetsResult?.data ?? []);
+      setAutoBudgets(savedAutoBudgets);
+      setAutoBudgetConfigId((current) => {
+        if (savedAutoBudgets.some((config) => config.autoPayoffConfigId === current)) {
+          return current;
+        }
+        return savedAutoBudgets[0]?.autoPayoffConfigId ?? 0;
+      });
+      setAutoBudgetAmount((current) => {
+        if (current.trim()) return current;
+        const selected = savedAutoBudgets[0];
+        return selected ? String(selected.extraMonthlyAmount ?? 0) : current;
+      });
     } catch (err) {
       const message =
         err instanceof ApiError
@@ -437,6 +499,10 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    setGridMounted(true);
+  }, []);
 
   useEffect(() => {
     if (loading || !gridApi) return;
@@ -710,6 +776,236 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
     setNotesModalRow(row);
   }, []);
 
+  const refreshAutoBudgetRows = useCallback((paymentIds: number[]) => {
+    const api = gridRef.current?.api;
+    if (!api || paymentIds.length === 0) return;
+
+    const rows = paymentIds
+      .map((id) =>
+        rowDataRef.current.find((row) => row.budgetPaymentId === id),
+      )
+      .filter((row): row is BudgetGridRow => Boolean(row));
+    if (rows.length > 0) {
+      api.applyTransaction({ update: rows });
+    }
+
+    const nodes = paymentIds
+      .map((id) => api.getRowNode(String(id)))
+      .filter((node): node is NonNullable<typeof node> => Boolean(node));
+    if (nodes.length > 0) {
+      api.refreshCells({
+        rowNodes: nodes,
+        columns: ["amount", "owed", "accountName", "budgetPaymentStatusName"],
+        force: true,
+      });
+      api.redrawRows({ rowNodes: nodes });
+    }
+  }, []);
+
+  const handleConfirmAutoBudget = useCallback(
+    async (budgetPaymentId: number) => {
+      if (autoBudgetConfirmInFlightRef.current === budgetPaymentId) return;
+
+      const api = gridRef.current?.api;
+      api?.stopEditing();
+
+      const row = rowDataRef.current.find(
+        (item) => item.budgetPaymentId === budgetPaymentId,
+      );
+      if (!row) return;
+
+      const scheduled = paymentStatuses.find(
+        (item) => item.name.trim().toLowerCase() === "scheduled",
+      );
+      if (!scheduled) {
+        setStatus({
+          type: "error",
+          message: "Scheduled status was not found. Refresh and try Confirm again.",
+        });
+        return;
+      }
+
+      autoBudgetConfirmInFlightRef.current = budgetPaymentId;
+      setAutoBudgetConfirmingId(budgetPaymentId);
+      setStatus(null);
+      try {
+        const saved = await paymentsApi.update(
+          row.budgetPaymentId,
+          toUpdatePaymentRequest(
+            {
+              ...row,
+              budgetPaymentStatusId: scheduled.budgetPaymentStatusId,
+              budgetPaymentStatusName: scheduled.name,
+            },
+            budgetStartPeriod,
+          ),
+        );
+        const savedAmount = saved.data?.amount ?? row.amount;
+        dirtyIds.current.delete(budgetPaymentId);
+        const nextRows = rowDataRef.current.map((item) =>
+          item.budgetPaymentId === budgetPaymentId
+            ? {
+                ...item,
+                amount: savedAmount,
+                budgetPaymentStatusId:
+                  saved.data?.budgetPaymentStatusId ??
+                  scheduled.budgetPaymentStatusId,
+                budgetPaymentStatusName:
+                  saved.data?.budgetPaymentStatusName ?? scheduled.name,
+                autoBudgetPending: false,
+              }
+            : item,
+        );
+        rowDataRef.current = nextRows;
+        setRowData(nextRows);
+        setAutoBudgetPendingIds((current) =>
+          current.filter((id) => id !== budgetPaymentId),
+        );
+        setPendingCount(dirtyIds.current.size + dirtyAccountIds.current.size);
+        setDirtyRevision((revision) => revision + 1);
+        setSummaryTick((tick) => tick + 1);
+        setStatus({
+          type: "success",
+          message: `Saved Auto Budget for ${row.accountName}.`,
+        });
+        refreshAutoBudgetRows([budgetPaymentId]);
+      } catch (err) {
+        const message =
+          err instanceof ApiError
+            ? err.errors.join(", ") || err.message
+            : err instanceof Error
+              ? err.message
+              : "Failed to save Auto Budget";
+        setStatus({ type: "error", message });
+      } finally {
+        autoBudgetConfirmInFlightRef.current = null;
+        setAutoBudgetConfirmingId(null);
+      }
+    },
+    [budgetStartPeriod, paymentStatuses, refreshAutoBudgetRows],
+  );
+
+  const handleApplyAutoBudget = useCallback(async () => {
+    const extra = parseMoneyInputOrZero(autoBudgetAmount);
+    if (extra <= 0) {
+      setStatus({
+        type: "error",
+        message: "Enter an Auto Budget amount greater than zero.",
+      });
+      return;
+    }
+
+    const selected = autoBudgets.find(
+      (config) => config.autoPayoffConfigId === autoBudgetConfigId,
+    );
+    if (!selected) {
+      setStatus({
+        type: "error",
+        message: "Select an Auto Budget to apply.",
+      });
+      return;
+    }
+
+    setAutoBudgeting(true);
+    setStatus(null);
+    try {
+      const preview = await autoPayoffApi.preview({
+        ...selected,
+        extraMonthlyAmount: extra,
+      });
+      const queue = preview.data?.queue ?? [];
+      const extraItems = queue.filter((item) => item.extraAllocated > 0);
+      if (extraItems.length === 0) {
+        setStatus({
+          type: "error",
+          message:
+            "That Auto Budget did not assign extra to any accounts. Paid-off, excluded, or already-paid accounts are skipped.",
+        });
+        return;
+      }
+
+      const rowByAccount = new Map<number, BudgetGridRow>();
+      for (const row of rowData) {
+        if (
+          !rowByAccount.has(row.accountId) ||
+          isFirstPaymentRowForAccount(row, rowData)
+        ) {
+          rowByAccount.set(row.accountId, row);
+        }
+      }
+
+      const updates = new Map<number, number>();
+      const unmatchedNames: string[] = [];
+      for (const item of extraItems) {
+        const row = rowByAccount.get(item.accountId);
+        if (!row) {
+          unmatchedNames.push(item.name);
+          continue;
+        }
+        const monthly = item.monthlyPayment || row.accountMonthlyPayment || 0;
+        updates.set(
+          row.budgetPaymentId,
+          roundMoney(monthly + item.extraAllocated),
+        );
+      }
+
+      if (updates.size === 0) {
+        setStatus({
+          type: "error",
+          message:
+            unmatchedNames.length > 0
+              ? `Extra went to ${unmatchedNames.join(", ")}, which ${
+                  unmatchedNames.length === 1 ? "is" : "are"
+                } not in this budget.`
+              : "No accounts in this budget received extra from that Auto Budget.",
+        });
+        return;
+      }
+
+      const pendingIds = [...updates.keys()];
+      for (const paymentId of pendingIds) {
+        dirtyIds.current.add(paymentId);
+      }
+
+      const nextRows = rowDataRef.current.map((row) => {
+        const nextAmount = updates.get(row.budgetPaymentId);
+        return nextAmount == null
+          ? { ...row, autoBudgetPending: false }
+          : { ...row, amount: nextAmount, autoBudgetPending: true };
+      });
+      rowDataRef.current = nextRows;
+      setRowData(nextRows);
+      setAutoBudgetPendingIds(pendingIds);
+      setPendingCount(dirtyIds.current.size + dirtyAccountIds.current.size);
+      setDirtyRevision((revision) => revision + 1);
+      setSummaryTick((tick) => tick + 1);
+      refreshAutoBudgetRows(pendingIds);
+
+      setStatus({
+        type: "success",
+        message: `Auto Budget applied to ${pendingIds.length} account${
+          pendingIds.length === 1 ? "" : "s"
+        }. Confirm each row to save.`,
+      });
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.errors.join(", ") || err.message
+          : err instanceof Error
+            ? err.message
+            : "Failed to apply Auto Budget";
+      setStatus({ type: "error", message });
+    } finally {
+      setAutoBudgeting(false);
+    }
+  }, [
+    autoBudgetAmount,
+    autoBudgetConfigId,
+    autoBudgets,
+    refreshAutoBudgetRows,
+    rowData,
+  ]);
+
   const gridContext = useMemo<BudgetGridContext>(
     () => ({
       rowData,
@@ -720,11 +1016,17 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       onDeletePayment: handleDeletePayment,
       onAddPaymentForAccount: handleAddPaymentForAccount,
       onOpenNotes: handleOpenNotes,
+      autoBudgetPendingIds,
+      autoBudgetConfirmingId,
+      onConfirmAutoBudget: handleConfirmAutoBudget,
     }),
     [
       accountMutating,
+      autoBudgetConfirmingId,
+      autoBudgetPendingIds,
       budgetAccountIds.length,
       handleAddPaymentForAccount,
+      handleConfirmAutoBudget,
       handleDeletePayment,
       handleOpenNotes,
       handleRemoveAccount,
@@ -789,9 +1091,9 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
           field: "accountName",
           headerName: "Account",
           filter: "agTextColumnFilter",
-          width: 160,
-          minWidth: 120,
-          maxWidth: 260,
+          width: 260,
+          minWidth: 200,
+          maxWidth: 380,
           pinned: "left",
           cellClass: "ag-cell-name",
           editable: false,
@@ -1147,9 +1449,9 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         colId: "actions",
         headerName: "",
         pinned: "right",
-        width: 200,
-        minWidth: 180,
-        maxWidth: 240,
+        width: 220,
+        minWidth: 200,
+        maxWidth: 280,
         sortable: false,
         filter: false,
         floatingFilter: false,
@@ -1262,15 +1564,14 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       }
       if (!params.data) return "";
 
-      if (dirtyIds.current.has(params.data.budgetPaymentId)) {
-        return "account-row-dirty";
+      const classes = [getBudgetPaymentRowClass(params.data)];
+      if (
+        dirtyIds.current.has(params.data.budgetPaymentId) ||
+        dirtyAccountIds.current.has(params.data.accountId)
+      ) {
+        classes.push("account-row-dirty");
       }
-
-      if (dirtyAccountIds.current.has(params.data.accountId)) {
-        return "account-row-dirty";
-      }
-
-      return getBudgetPaymentRowClass(params.data);
+      return classes.filter(Boolean).join(" ");
     },
     [pendingCount, dirtyRevision],
   );
@@ -1590,6 +1891,49 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
     void loadData();
   };
 
+  const handleResetAllStatuses = async () => {
+    const selected = paymentStatuses.find(
+      (status) => status.budgetPaymentStatusId === resetStatusId,
+    );
+    if (!selected || rowData.length === 0) return;
+
+    const confirmed = window.confirm(
+      `Reset all ${rowData.length} payment${
+        rowData.length === 1 ? "" : "s"
+      } to ${selected.name}?`,
+    );
+    if (!confirmed) return;
+
+    setSaving(true);
+    setStatus(null);
+    try {
+      const result = await paymentsApi.resetBudgetStatuses(
+        budgetId,
+        selected.budgetPaymentStatusId,
+      );
+      const updatedCount = result.data?.updatedCount ?? rowData.length;
+      dirtyIds.current.clear();
+      setPendingCount(dirtyAccountIds.current.size);
+      setStatus({
+        type: "success",
+        message: `Reset ${updatedCount} payment${
+          updatedCount === 1 ? "" : "s"
+        } to ${selected.name}.`,
+      });
+      await loadData();
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.errors.join(", ") || err.message
+          : err instanceof Error
+            ? err.message
+            : "Failed to reset payment statuses";
+      setStatus({ type: "error", message });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const scheduleColumnStateSave = useCallback(() => {
     if (!columnStateReadyRef.current) return;
 
@@ -1613,6 +1957,20 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
   useEffect(() => {
     refreshPinnedTotals();
   }, [rowData, summaryTick, refreshPinnedTotals]);
+
+  useEffect(() => {
+    if (!gridApi) return;
+    refreshAutoBudgetRows(autoBudgetPendingIds);
+    gridApi.refreshCells({
+      columns: ["accountName"],
+      force: true,
+    });
+  }, [
+    autoBudgetConfirmingId,
+    autoBudgetPendingIds,
+    gridApi,
+    refreshAutoBudgetRows,
+  ]);
 
   const onGridReady = (event: GridReadyEvent) => {
     setGridApi(event.api);
@@ -1829,6 +2187,46 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
           </div>
 
           <div className="account-grid-toolbar-actions">
+            <div className="inline-flex items-center gap-2">
+              <label className="inline-flex items-center gap-2 text-sm">
+                <span className="whitespace-nowrap font-medium text-[var(--muted)]">
+                  Status
+                </span>
+                <select
+                  value={resetStatusId || ""}
+                  onChange={(event) =>
+                    setResetStatusId(Number(event.target.value))
+                  }
+                  disabled={
+                    loading || saving || paymentStatuses.length === 0
+                  }
+                  aria-label="Status to apply to all payments"
+                  className="rounded-full border border-[var(--border)] bg-white px-3 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {paymentStatuses.map((status) => (
+                    <option
+                      key={status.budgetPaymentStatusId}
+                      value={status.budgetPaymentStatusId}
+                    >
+                      {status.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                onClick={() => void handleResetAllStatuses()}
+                disabled={
+                  loading ||
+                  saving ||
+                  resetStatusId <= 0 ||
+                  rowData.length === 0
+                }
+                className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Reset All
+              </button>
+            </div>
             <button
               type="button"
               onClick={() => {
@@ -1894,6 +2292,71 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
           </p>
         </div>
 
+        <div className="account-grid-autobudget">
+          <span className="account-grid-autobudget-title">Auto Budget</span>
+          <label className="inline-flex items-center gap-2 text-sm">
+            <span className="whitespace-nowrap font-medium text-[var(--muted)]">
+              Amount:
+            </span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={autoBudgetAmount}
+              onChange={(event) =>
+                setAutoBudgetAmount(sanitizeMoneyInput(event.target.value))
+              }
+              placeholder="0.00"
+              aria-label="Auto Budget amount"
+              disabled={loading || autoBudgeting || saving}
+              className="w-28 rounded-full border border-[var(--border)] bg-white px-3 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
+            />
+          </label>
+          <select
+            value={autoBudgetConfigId > 0 ? String(autoBudgetConfigId) : ""}
+            onChange={(event) => {
+              const nextId = Number(event.target.value);
+              setAutoBudgetConfigId(nextId);
+              const selected = autoBudgets.find(
+                (config) => config.autoPayoffConfigId === nextId,
+              );
+              if (selected) {
+                setAutoBudgetAmount(String(selected.extraMonthlyAmount ?? 0));
+              }
+            }}
+            disabled={
+              loading || autoBudgeting || saving || autoBudgets.length === 0
+            }
+            aria-label="Auto Budget to apply"
+            className="min-w-44 rounded-full border border-[var(--border)] bg-white px-3 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <option value="">
+              {autoBudgets.length === 0 ? "No Auto budgets" : "Select Auto Budget"}
+            </option>
+            {autoBudgets.map((config) => (
+              <option
+                key={config.autoPayoffConfigId}
+                value={String(config.autoPayoffConfigId ?? "")}
+              >
+                {config.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => void handleApplyAutoBudget()}
+            disabled={
+              loading ||
+              saving ||
+              autoBudgeting ||
+              autoBudgetConfigId <= 0 ||
+              rowData.length === 0
+            }
+            className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {autoBudgeting ? "Applying…" : "Auto budget"}
+          </button>
+        </div>
+
         <GridActiveFilters
           gridApi={gridApi}
           quickFilter={quickFilter}
@@ -1929,46 +2392,52 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
         ) : null}
 
         <div className="account-grid-viewport">
-          <AgGridReact<BudgetGridRow>
-            ref={gridRef}
-            theme={accountGridTheme}
-            rowData={rowData}
-            getRowId={(params) => String(params.data.budgetPaymentId)}
-            pinnedBottomRowData={pinnedBottomRowData}
-            columnDefs={columnDefs}
-            defaultColDef={defaultColDef}
-            context={gridContext}
-            getRowClass={getRowClass}
-            isExternalFilterPresent={isExternalFilterPresent}
-            doesExternalFilterPass={doesExternalFilterPass}
-            onCellEditingStarted={onCellEditingStarted}
-            onCellEditingStopped={onCellEditingStopped}
-            onCellValueChanged={onCellValueChanged}
-            onGridReady={onGridReady}
-            onFilterChanged={() => {
-              setFilterRevision((revision) => revision + 1);
-              refreshPinnedTotals();
-            }}
-            onColumnVisible={scheduleColumnStateSave}
-            onColumnMoved={scheduleColumnStateSave}
-            onColumnResized={scheduleColumnStateSave}
-            onColumnPinned={scheduleColumnStateSave}
-            onSortChanged={scheduleColumnStateSave}
-            loading={loading}
-            quickFilterText={quickFilter}
-            tooltipShowDelay={400}
-            singleClickEdit={false}
-            stopEditingWhenCellsLoseFocus={true}
-            undoRedoCellEditing={true}
-            undoRedoCellEditingLimit={20}
-            enableCellTextSelection={true}
-            ensureDomOrder={true}
-            animateRows={true}
-            pagination={true}
-            paginationPageSize={25}
-            paginationPageSizeSelector={[10, 25, 50, 100]}
-            suppressDragLeaveHidesColumns={false}
-          />
+          {gridMounted ? (
+            <AgGridReact<BudgetGridRow>
+              ref={gridRef}
+              theme={accountGridTheme}
+              rowData={rowData}
+              getRowId={(params) => String(params.data.budgetPaymentId)}
+              pinnedBottomRowData={pinnedBottomRowData}
+              columnDefs={columnDefs}
+              defaultColDef={defaultColDef}
+              context={gridContext}
+              getRowClass={getRowClass}
+              isExternalFilterPresent={isExternalFilterPresent}
+              doesExternalFilterPass={doesExternalFilterPass}
+              onCellEditingStarted={onCellEditingStarted}
+              onCellEditingStopped={onCellEditingStopped}
+              onCellValueChanged={onCellValueChanged}
+              onGridReady={onGridReady}
+              onFilterChanged={() => {
+                setFilterRevision((revision) => revision + 1);
+                refreshPinnedTotals();
+              }}
+              onColumnVisible={scheduleColumnStateSave}
+              onColumnMoved={scheduleColumnStateSave}
+              onColumnResized={scheduleColumnStateSave}
+              onColumnPinned={scheduleColumnStateSave}
+              onSortChanged={scheduleColumnStateSave}
+              loading={loading}
+              quickFilterText={quickFilter}
+              tooltipShowDelay={400}
+              singleClickEdit={false}
+              stopEditingWhenCellsLoseFocus={true}
+              undoRedoCellEditing={true}
+              undoRedoCellEditingLimit={20}
+              enableCellTextSelection={true}
+              ensureDomOrder={true}
+              animateRows={true}
+              pagination={true}
+              paginationPageSize={25}
+              paginationPageSizeSelector={[10, 25, 50, 100]}
+              suppressDragLeaveHidesColumns={false}
+            />
+          ) : (
+            <div className="flex min-h-[420px] items-center justify-center text-sm text-[var(--muted)]">
+              Loading grid…
+            </div>
+          )}
         </div>
       </div>
 

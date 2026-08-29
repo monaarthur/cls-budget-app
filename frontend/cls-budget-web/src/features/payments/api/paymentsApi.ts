@@ -3,6 +3,7 @@ import type {
   CreatePaymentRequest,
   PaymentResponse,
   BudgetPaymentStatusResponse,
+  ResetBudgetPaymentStatusesResponse,
   UpdatePaymentRequest,
 } from "@/features/payments/types/payment";
 
@@ -16,6 +17,13 @@ export const paymentsApi = {
     apiPost<PaymentResponse, CreatePaymentRequest>(paymentsPath, body),
   update: (id: number, body: UpdatePaymentRequest) =>
     apiPut<PaymentResponse, UpdatePaymentRequest>(`${paymentsPath}/${id}`, body),
+  resetBudgetStatuses: (budgetId: number, budgetPaymentStatusId: number) =>
+    apiPut<
+      ResetBudgetPaymentStatusesResponse,
+      { budgetPaymentStatusId: number }
+    >(`${paymentsPath}/budget/${budgetId}/statuses`, {
+      budgetPaymentStatusId,
+    }),
   remove: (id: number) => apiDelete<null>(`${paymentsPath}/${id}`),
   getStatuses: () => apiGet<BudgetPaymentStatusResponse[]>(statusesPath),
 };

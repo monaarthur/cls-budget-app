@@ -40,6 +40,29 @@ public class PaymentsController(IPaymentService paymentService) : ControllerBase
         return result.Success ? Ok(result) : NotFound(result);
     }
 
+    [HttpPut("budget/{budgetId:int}/statuses")]
+    [ProducesResponseType(typeof(ApiResponse<ResetBudgetPaymentStatusesResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ResetBudgetPaymentStatusesResponse>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<ResetBudgetPaymentStatusesResponse>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ResetBudgetStatuses(
+        int budgetId,
+        [FromBody] ResetBudgetPaymentStatusesRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await paymentService.ResetBudgetStatusesAsync(
+            budgetId,
+            request,
+            cancellationToken);
+        if (!result.Success)
+        {
+            return result.Errors.Any(e => e.Contains("was not found", StringComparison.OrdinalIgnoreCase))
+                ? NotFound(result)
+                : BadRequest(result);
+        }
+
+        return Ok(result);
+    }
+
     [Authorize(Policy = AuthorizationPolicies.TenantOwner)]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)

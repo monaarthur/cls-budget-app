@@ -1,10 +1,23 @@
 "use client";
 
 import { AppLink as Link } from "@/components/AppLink";
+import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { BudgetGrid } from "@/features/budgets/components/BudgetGrid";
 import { TopBar } from "@/components/layout/TopBar";
+
+const BudgetGrid = dynamic(
+  () =>
+    import("@/features/budgets/components/BudgetGrid").then(
+      (mod) => mod.BudgetGrid,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="p-8 text-sm text-[var(--muted)]">Loading budget…</div>
+    ),
+  },
+);
 
 function BudgetDetailContent() {
   const searchParams = useSearchParams();

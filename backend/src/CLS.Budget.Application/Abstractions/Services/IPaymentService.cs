@@ -9,5 +9,9 @@ public interface IPaymentService
     Task<ApiResponse<PaymentResponse>> GetByIdAsync(int paymentId, CancellationToken cancellationToken = default);
     Task<ApiResponse<PaymentResponse>> CreateAsync(CreatePaymentRequest request, CancellationToken cancellationToken = default);
     Task<ApiResponse<PaymentResponse>> UpdateAsync(int paymentId, UpdatePaymentRequest request, CancellationToken cancellationToken = default);
+    Task<ApiResponse<ResetBudgetPaymentStatusesResponse>> ResetBudgetStatusesAsync(
+        int budgetId,
+        ResetBudgetPaymentStatusesRequest request,
+        CancellationToken cancellationToken = default);
     Task<ApiResponse<object>> DeleteAsync(int paymentId, CancellationToken cancellationToken = default);
 }

@@ -3,6 +3,7 @@ using System;
 using CLS.Budget.Infrastructure.Persistance;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CLS.Budget.EfCore.Migrations
 {
     [DbContext(typeof(BudgetDbContext))]
-    partial class BudgetDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260828223031_AddAutoPayoffConfig")]
+    partial class AddAutoPayoffConfig
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -422,11 +425,6 @@ namespace CLS.Budget.EfCore.Migrations
                     b.Property<decimal>("ExtraMonthlyAmount")
                         .HasColumnType("numeric(18,2)");
 
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
                     b.Property<bool>("TargetByPayoffDate")
                         .HasColumnType("boolean");
 
@@ -443,7 +441,7 @@ namespace CLS.Budget.EfCore.Migrations
 
                     b.HasKey("AutoPayoffConfigId");
 
-                    b.HasIndex("TenantId", "Name")
+                    b.HasIndex("TenantId")
                         .IsUnique();
 
                     b.ToTable("AutoPayoffConfig", (string)null);

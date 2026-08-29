@@ -12,6 +12,9 @@ const PAYMENT_SOURCE_TOOLTIP_LINES = ["Update Payment Type"];
 
 export interface AccountNameCellContext {
   onOpenNotes?: (row: BudgetGridRow) => void;
+  autoBudgetPendingIds?: number[];
+  autoBudgetConfirmingId?: number | null;
+  onConfirmAutoBudget?: (budgetPaymentId: number) => void;
 }
 
 export function AccountNameCellRenderer(
@@ -24,10 +27,41 @@ export function AccountNameCellRenderer(
   const hasNotes =
     accountNotes.length > 0 || hasActivePaymentLineNotes(params.data.notes);
   const openNotes = params.context?.onOpenNotes;
+  const pending =
+    params.data.autoBudgetPending === true ||
+    (params.context?.autoBudgetPendingIds?.includes(
+      params.data.budgetPaymentId,
+    ) ??
+      false);
+  const confirming =
+    params.context?.autoBudgetConfirmingId === params.data.budgetPaymentId;
+
+  const stopGridFromStealingClick = (event: {
+    preventDefault(): void;
+    stopPropagation(): void;
+  }) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
 
   return (
     <div className="flex min-w-0 items-center gap-1.5">
       <span className="truncate">{params.data.accountName}</span>
+      {pending ? (
+        <button
+          type="button"
+          className="budget-autobudget-confirm"
+          disabled={confirming || !params.context?.onConfirmAutoBudget}
+          title="Save this Auto Budget amount"
+          onMouseDown={stopGridFromStealingClick}
+          onClick={(event) => {
+            stopGridFromStealingClick(event);
+            params.context?.onConfirmAutoBudget?.(params.data!.budgetPaymentId);
+          }}
+        >
+          {confirming ? "Saving…" : "Confirm"}
+        </button>
+      ) : null}
       <button
         type="button"
         className={`budget-notes-indicator shrink-0 ${

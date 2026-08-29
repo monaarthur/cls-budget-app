@@ -38,6 +38,7 @@ public class BudgetDbContext(DbContextOptions<BudgetDbContext> options, ITenantC
     public DbSet<PayoffPlanVersion> PayoffPlanVersions => Set<PayoffPlanVersion>();
     public DbSet<PayoffPlanPayment> PayoffPlanPayments => Set<PayoffPlanPayment>();
     public DbSet<PayoffPlanEvent> PayoffPlanEvents => Set<PayoffPlanEvent>();
+    public DbSet<AutoPayoffConfig> AutoPayoffConfigs => Set<AutoPayoffConfig>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -508,6 +509,20 @@ public class BudgetDbContext(DbContextOptions<BudgetDbContext> options, ITenantC
                 .OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => x.TenantId);
             e.HasIndex(x => new { x.ActivePayoffPlanId, x.CreatedOnUtc });
+            e.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<AutoPayoffConfig>(e =>
+        {
+            e.ToTable("AutoPayoffConfig");
+            e.HasKey(x => x.AutoPayoffConfigId);
+            e.Property(x => x.ExcludeStatusIdsJson).IsRequired().HasMaxLength(2000);
+            e.Property(x => x.ExcludeCategoryIdsJson).IsRequired().HasMaxLength(2000);
+            e.Property(x => x.ExcludeAccountIdsJson).IsRequired().HasMaxLength(4000);
+            e.Property(x => x.TargetCategoryIdsJson).IsRequired().HasMaxLength(2000);
+            e.Property(x => x.Name).IsRequired().HasMaxLength(200);
+            e.Property(x => x.ExtraMonthlyAmount).HasColumnType("numeric(18,2)");
+            e.HasIndex(x => new { x.TenantId, x.Name }).IsUnique();
             e.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
         });
 
