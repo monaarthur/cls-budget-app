@@ -325,8 +325,14 @@
 
 /* Cell styles */
 .account-grid-viewport .ag-cell-name {
+  overflow: visible;
   font-weight: 600;
   color: #0f2744;
+}
+
+.account-grid-viewport .ag-cell-name .ag-cell-value,
+.account-grid-viewport .ag-cell-name .ag-cell-wrapper {
+  overflow: visible;
 }
 
 .budget-notes-indicator {

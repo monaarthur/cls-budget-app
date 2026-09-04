@@ -885,6 +885,15 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
     [budgetStartPeriod, paymentStatuses, refreshAutoBudgetRows],
   );
 
+  const handleConfirmAllAutoBudget = useCallback(async () => {
+    const pendingIds = autoBudgetPendingIds.filter((id) =>
+      rowDataRef.current.some((row) => row.budgetPaymentId === id),
+    );
+    for (const paymentId of pendingIds) {
+      await handleConfirmAutoBudget(paymentId);
+    }
+  }, [autoBudgetPendingIds, handleConfirmAutoBudget]);
+
   const handleApplyAutoBudget = useCallback(async () => {
     const extra = parseMoneyInputOrZero(autoBudgetAmount);
     if (extra <= 0) {
@@ -981,11 +990,16 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
       setSummaryTick((tick) => tick + 1);
       refreshAutoBudgetRows(pendingIds);
 
+      const firstPending = gridRef.current?.api.getRowNode(String(pendingIds[0]));
+      if (firstPending?.rowIndex != null) {
+        gridRef.current?.api.ensureIndexVisible(firstPending.rowIndex, "middle");
+      }
+
       setStatus({
         type: "success",
         message: `Auto Budget applied to ${pendingIds.length} account${
           pendingIds.length === 1 ? "" : "s"
-        }. Confirm each row to save.`,
+        }. Use Confirm in the Auto Budget bar to save.`,
       });
     } catch (err) {
       const message =
@@ -1091,9 +1105,9 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
           field: "accountName",
           headerName: "Account",
           filter: "agTextColumnFilter",
-          width: 260,
-          minWidth: 200,
-          maxWidth: 380,
+          width: 320,
+          minWidth: 280,
+          maxWidth: 440,
           pinned: "left",
           cellClass: "ag-cell-name",
           editable: false,
@@ -2355,6 +2369,18 @@ export function BudgetGrid({ budgetId }: { budgetId: number }) {
           >
             {autoBudgeting ? "Applying…" : "Auto budget"}
           </button>
+          {autoBudgetPendingIds.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => void handleConfirmAllAutoBudget()}
+              disabled={saving || autoBudgetConfirmingId != null}
+              className="inline-flex items-center gap-2 rounded-full bg-[#0f2744] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {autoBudgetConfirmingId != null
+                ? "Saving…"
+                : `Confirm ${autoBudgetPendingIds.length}`}
+            </button>
+          ) : null}
         </div>
 
         <GridActiveFilters

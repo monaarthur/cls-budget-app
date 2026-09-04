@@ -52,7 +52,7 @@ export function AccountNameCellRenderer(
           type="button"
           className="budget-autobudget-confirm"
           disabled={confirming || !params.context?.onConfirmAutoBudget}
-          title="Save this Auto Budget amount"
+          title="Save this Auto Budget amount and mark it Scheduled"
           onMouseDown={stopGridFromStealingClick}
           onClick={(event) => {
             stopGridFromStealingClick(event);

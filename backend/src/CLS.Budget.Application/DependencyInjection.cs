@@ -53,6 +53,7 @@ public static class DependencyInjection
         services.AddSingleton<IBalanceTransferEngine, BalanceTransferEngine>();
         services.AddSingleton<ICashFlowEngine, CashFlowEngine>();
         services.AddSingleton<IForecastEngine, ForecastEngine>();
+        services.AddScoped<ICreditCardDecisionService, CreditCardDecisionService>();
         services.AddSingleton<AutoPayoffEngine>();
         services.AddScoped<IAutoPayoffService, AutoPayoffService>();
         services.AddScoped<IAuthService, AuthService>();
